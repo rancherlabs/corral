@@ -3,6 +3,6 @@
 cd packages
 for pkg in *; do
     tag=$(cat $pkg/manifest.yaml  | grep version | sed "s/version: /v/")
-    echo $pkg "ghcr.io/rancherlabs/corral/$pkg:$tag"
-    echo $pkg "ghcr.io/rancherlabs/corral/$pkg:latest"
+    corral publish $pkg "ghcr.io/rancherlabs/corral/$pkg:$tag"
+    corral publish $pkg "ghcr.io/rancherlabs/corral/$pkg:latest"
 done
