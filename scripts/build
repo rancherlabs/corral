@@ -1,0 +1,17 @@
+#!/bin/bash
+
+GITHUB_REF=${GITHUB_REF:=v100.100.100-dev}
+
+TAG=${GITHUB_REF##*/}
+VERSION=${TAG/v/}
+
+if [[ -n $GITHUB_ENV ]]; then
+  echo "TAG=$TAG" >> $GITHUB_ENV
+  echo "VERSION=$VERSION" >> $GITHUB_ENV
+  if [[ "$VERSION" =~ .*-.*$ ]]; then echo "IS_PRERELEASE=true" >> $GITHUB_ENV; fi
+fi
+
+GOOS=linux GOARCH=arm go build -a -installsuffix cgo -ldflags "-X github.com/rancherlabs/dev-provisioning/pkg/version.Version=$VERSION" -o dist/corral-"$VERSION"-arm64 main.go
+GOOS=darwin GOARCH=arm64 go build -a -installsuffix cgo -ldflags "-X github.com/rancherlabs/dev-provisioning/pkg/version.Version=$VERSION" -o dist/corral-"$VERSION"-darwin-arm64 main.go
+GOOS=linux GOARCH=amd64 go build -a -installsuffix cgo -ldflags "-X github.com/rancherlabs/dev-provisioning/pkg/version.Version=$VERSION" -o dist/corral-"$VERSION"-amd64 main.go
+GOOS=windows go build -a -installsuffix cgo -ldflags "-X github.com/rancherlabs/dev-provisioning/pkg/version.Version=$VERSION" -o dist/corral-"$VERSION".exe main.go

@@ -1,0 +1,7 @@
+#!/bin/bash
+
+for pkg in packages/*; do
+    tag=$(cat $pkg/manifest.yaml  | grep version | sed "s/version: /v/")
+    corral publish $pkg "ghcr.io/rancherlabs/dev-provisioning/$pkg:$tag"
+    corral publish $pkg "ghcr.io/rancherlabs/dev-provisioning/$pkg:latest"
+done

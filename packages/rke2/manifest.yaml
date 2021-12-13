@@ -1,0 +1,17 @@
+name: rke2
+version: 0.1.0
+commands:
+  - command: /opt/corral/preflight.sh
+    node_pools:
+      - controlplane
+      - agent
+      - init
+  - command: /opt/corral/init-cluster.sh
+    node_pools:
+      - init
+  - command: /opt/corral/install-controlplane.sh
+    node_pools:
+      - controlplane
+  - command: /opt/corral/install-agent.sh
+    node_pools:
+      - agent
