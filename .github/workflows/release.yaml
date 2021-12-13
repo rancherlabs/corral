@@ -15,7 +15,7 @@ jobs:
         with:
           go-version: "1.17.5"
       - run: scripts/build
-      - run: alias corral=dist/corral-"$VERSION"-amd64 config
+      - run: install dist/corral-"$VERSION"-amd64 /usr/local/bin/corral
       - run: corral config --user_id ci --public_key=/dev/null
       - run: corral login --username ${{ github.actor }} --password ${{ secrets.GITHUB_TOKEN }} ghcr.io
       - run: scripts/push-packages
