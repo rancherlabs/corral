@@ -1,0 +1,13 @@
+name: rancher
+version: 0.1.0
+commands:
+  - command: /opt/corral/preflight.sh
+    node_pools:
+      - controlplane
+      - init
+  - command: /opt/corral/init-cluster.sh
+    node_pools:
+      - init
+  - command: /opt/corral/add-node.sh
+    node_pools:
+      - controlplane
