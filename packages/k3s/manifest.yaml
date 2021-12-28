@@ -1,7 +1,9 @@
 name: k3s
 version: 0.1.0
+description: >
+  A highly available k3s cluster on Digitalocean.
 commands:
-  - command: /opt/corral/add-user-keys.sh
+  - command: /opt/corral/preflight.sh
     node_pools:
       - controlplane
       - agent
@@ -15,3 +17,38 @@ commands:
   - command: /opt/corral/install-agent.sh
     node_pools:
       - agent
+variables:
+  digitalocean_token:
+    sensitive: true
+    type: string
+    optional: false
+    description: "A Digitalocean API token with write permission. https://docs.digitalocean.com/reference/api/create-personal-access-token/"
+  digitalocean_domain:
+    type: string
+    optional: false
+    description: "The domain to use for the api url."
+  controlplane_count:
+    type: integer
+    optional: true
+    description: "How many control-plane nodes should be created."
+    minimum: 1
+  controlplane_size:
+      type: string
+      optional: true
+      description: "What size droplet to use for control-plane nodes. https://slugs.do-api.dev/"
+  agent_count:
+    type: integer
+    optional: true
+    description: "How many agent nodes should be created."
+  agent_size:
+    type: string
+    optional: true
+    description: "What size droplet to use for agent nodes. https://slugs.do-api.dev/"
+  kube_api_host:
+    type: string
+    readOnly: true
+    description: "Host of the kubernetes api."
+  kubeconfig:
+    type: string
+    readOnly: true
+    description: "Kubeconfig for the cluster encoded as a base64 string."

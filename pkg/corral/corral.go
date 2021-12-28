@@ -11,6 +11,7 @@ import (
 
 type Corral struct {
 	RootPath string `yaml:"rootPath"`
+	Source   string `yaml:"source"`
 
 	Name       string `yaml:"name"`
 	Status     Status `yaml:"status" json:"status,omitempty"`

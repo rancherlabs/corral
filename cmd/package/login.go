@@ -1,4 +1,4 @@
-package cmd
+package cmd_package
 
 import (
 	"fmt"
@@ -53,4 +53,13 @@ func login(cmd *cobra.Command, args []string) {
 	}
 
 	logrus.Info("success!")
+}
+
+func prompt(message string) string {
+	var buf string
+
+	print(message)
+	_, _ = fmt.Scanln(&buf)
+
+	return buf
 }

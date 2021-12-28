@@ -1,0 +1,19 @@
+name: valid
+version: 0.1.0
+description: "valid description"
+commands:
+  - node_pools:
+      - foo
+    command: whoami
+variables:
+  a:
+    type: string
+  b:
+    type: integer
+    readOnly: true
+  c:
+    sensitive: true
+    type: string
+  d:
+    type: boolean
+    optional: true
