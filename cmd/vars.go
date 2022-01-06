@@ -3,9 +3,9 @@ package cmd
 import (
 	"os"
 
-	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/rancherlabs/corral/pkg/config"
 	"github.com/rancherlabs/corral/pkg/corral"
+	_package "github.com/rancherlabs/corral/pkg/package"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -33,10 +33,12 @@ func NewCommandVars() *cobra.Command {
 		},
 	}
 
+	cmd.Flags().Bool("sensitive", false, "Sensitive values will be displayed if this flag is true.")
+
 	return cmd
 }
 
-func vars(_ *cobra.Command, args []string) {
+func vars(cmd *cobra.Command, args []string) {
 	corralName := args[0]
 
 	c, err := corral.Load(cfg.CorralPath(corralName))
@@ -50,35 +52,24 @@ func vars(_ *cobra.Command, args []string) {
 		return
 	}
 
-	tbl := table.NewWriter()
-	tbl.SetOutputMirror(os.Stdout)
-	tbl.AppendHeader(table.Row{"NAME", "VALUE"})
-	tbl.AppendSeparator()
-
-	var found bool
-	for k, v := range c.Vars {
-		found = false
-		if len(args) > 1 {
-			for _, kk := range args[1:] {
-				if kk == k {
-					found = true
-					break
-				}
-			}
-		} else {
-			found = true
-		}
-
-		if !found {
-			continue
-		}
-
-		if len(v) > 16 {
-			v = v[0:16] + "..."
-		}
-
-		tbl.AppendRow(table.Row{k, v})
+	pkg, err := _package.LoadPackage(c.Source, cfg.PackageCachePath(), cfg.RegistryCredentialsFile())
+	if err != nil {
+		logrus.Fatal("failed to load corral package: ", err)
 	}
 
-	tbl.Render()
+	vs := c.Vars
+
+	if !debug {
+		vs = pkg.FilterVars(c.Vars)
+	}
+
+	if sensitive, _ := cmd.Flags().GetBool("sensitive"); !sensitive {
+		vs = pkg.FilterSensitiveVars(vs)
+	}
+
+	println("NAME\tVALUE")
+	for k, v := range vs {
+		println(k + "\t" + v)
+	}
+	println()
 }

@@ -1,0 +1,76 @@
+{
+  "title": "Corral Package Manifest",
+  "type": "object",
+  "required": ["name", "version", "description"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 16,
+      "description": "The name of the package."
+    },
+    "version": {
+      "type": "string",
+      "minLength": 5,
+      "description": "The package version. This value should be a valid semver."
+    },
+    "description": {
+      "type": "string",
+      "description": "Describe the purpose of this package."
+    },
+    "commands": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/command"
+      }
+    },
+    "variables": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/definitions/variable"
+      }
+    }
+  },
+  "definitions": {
+    "command": {
+      "type": "object",
+      "required": ["command", "node_pools"],
+      "properties": {
+        "command": {
+          "type": "string",
+          "description": "The command to exec on every node in the listed pools."
+        },
+        "node_pools": {
+          "type": "array",
+          "minLength": 1,
+          "description": "A list of node pools to execute the command on.",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "variable": {
+      "type": "object",
+      "$ref": "http://json-schema.org/draft-07/schema",
+      "required": ["type"],
+      "properties": {
+        "sensitive": {
+          "type": "boolean",
+          "default": false,
+          "description": "If a variable is marked as sensitive it will not be returned by the vars command or when a corral is exported."
+        },
+        "optional": {
+          "type": "boolean",
+          "default": true,
+          "description": "If a variable is marked as optional, it will not be required to use this package."
+        },
+        "read_only": {
+          "type": "boolean",
+          "default": true,
+          "description": "If a variable is marked as read only it can only returned by a corral, not set."
+        }
+      }
+    }
+  }
+}

@@ -7,7 +7,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"io/fs"
 	"net/http"
@@ -18,7 +17,6 @@ import (
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/rancherlabs/corral/pkg/version"
 	"github.com/sirupsen/logrus"
-	"gopkg.in/yaml.v2"
 	"oras.land/oras-go/pkg/auth"
 	dockerauth "oras.land/oras-go/pkg/auth/docker"
 	"oras.land/oras-go/pkg/content"
@@ -31,10 +29,6 @@ type Package struct {
 	RootPath string
 
 	Manifest
-}
-
-func (b Package) ManifestPath() string {
-	return filepath.Join(b.RootPath, "manifest.yaml")
 }
 
 func (b Package) TerraformModulePath() string {
@@ -61,6 +55,7 @@ func LoadPackage(ref, cachePath, registryCredentialsFile string) (Package, error
 
 func loadLocalPackage(src string) (Package, error) {
 	var pkg Package
+	var err error
 
 	if _, err := os.Stat(src); err != nil {
 		return pkg, err
@@ -68,14 +63,9 @@ func loadLocalPackage(src string) (Package, error) {
 
 	pkg.RootPath = src
 
-	mf, err := os.Open(pkg.ManifestPath())
+	pkg.Manifest, err = LoadManifest(os.DirFS(pkg.RootPath), "manifest.yaml")
 	if err != nil {
-		return pkg, fmt.Errorf("%s could not find package manifest", src)
-	}
-
-	err = yaml.NewDecoder(mf).Decode(&pkg.Manifest)
-	if err != nil {
-		return pkg, fmt.Errorf("failed to parse package manifest: %s", err.Error())
+		return pkg, err
 	}
 
 	return pkg, nil

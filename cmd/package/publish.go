@@ -1,9 +1,8 @@
-package cmd
+package cmd_package
 
 import (
 	"github.com/rancherlabs/corral/pkg/config"
 	_package "github.com/rancherlabs/corral/pkg/package"
-	"github.com/rancherlabs/corral/pkg/version"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -29,8 +28,6 @@ func NewCommandPublish() *cobra.Command {
 
 	return cmd
 }
-
-const corralUserAgent = "Corral/" + version.Version
 
 func publish(_ *cobra.Command, args []string) {
 	err := _package.UploadPackage(args[0], args[1], cfg.RegistryCredentialsFile())

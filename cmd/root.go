@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	cmd_package "github.com/rancherlabs/corral/cmd/package"
 	"github.com/rancherlabs/corral/pkg/config"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -30,10 +31,9 @@ func Execute() {
 		NewCommandConfig(),
 		NewCommandDelete(),
 		NewCommandList(),
-		NewCommandPublish(),
 		NewCommandVars(),
-		NewCommandLogin(),
-		NewCommandCreate())
+		NewCommandCreate(),
+		cmd_package.NewCommandPackage())
 
 	rootCmd.PersistentFlags().BoolVar(&debug, "debug", false, "Enable verbose logging.")
 

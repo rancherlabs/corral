@@ -41,7 +41,7 @@ corral create k3s-custom /home/rancher/issue-1234
 
 func NewCommandCreate() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "create NAME PACKAGE",
+		Use:   "create NAME [PACKAGE]",
 		Short: "Create a new corral",
 		Long:  createDescription,
 		Args:  cobra.RangeArgs(1, 2),
@@ -60,7 +60,7 @@ func NewCommandCreate() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().String("config", "", "Load flags for this command from a file.")
+	cmd.Flags().String("config", "", "loadManifest flags for this command from a file.")
 
 	cmd.Flags().Bool("dry-run", false, "Display what resources this corral will create.")
 	_ = cfgViper.BindPFlag("dry-run", cmd.Flags().Lookup("dry-run"))
@@ -75,25 +75,51 @@ func NewCommandCreate() *cobra.Command {
 }
 
 func create(_ *cobra.Command, args []string) {
-	source := cfgViper.GetString("package")
-	if source == "" {
+	var corr corral.Corral
+	corr.RootPath = cfg.CorralPath(args[0])
+	corr.Name = args[0]
+	corr.Source = args[1]
+	corr.NodePools = map[string][]corral.Node{}
+	corr.Vars = map[string]string{}
+	corr.Source = cfgViper.GetString("package")
+
+	// get the source from flags or args
+	if corr.Source == "" {
 		if len(args) < 2 {
 			logrus.Fatal("You must specify a package with the `-p` flag or as an argument.")
 		}
 
-		source = args[1]
+		corr.Source = args[1]
 	}
-
-	var corr corral.Corral
-
-	corr.RootPath = cfg.CorralPath(args[0])
-	corr.Name = args[0]
-	corr.NodePools = map[string][]corral.Node{}
-	corr.Vars = map[string]string{}
 
 	// ensure this corral is unique
 	if corr.Exists() {
 		logrus.Fatalf("corral [%s] already exists", corr.Name)
+	}
+
+	// load cli variables
+	for _, raw := range cfgViper.GetStringSlice("variable") {
+		k, v := corral.ToVar(raw)
+		if k == "" {
+			logrus.Fatal("variables should be in the format <key>=<value>")
+		}
+		corr.Vars[k] = v
+	}
+	for k, v := range cfg.Vars { // copy the global vars for future reference
+		corr.Vars[k] = v
+	}
+
+	// load the package
+	logrus.Info("loading package")
+	pkg, err := _package.LoadPackage(corr.Source, cfg.PackageCachePath(), cfg.RegistryCredentialsFile())
+	if err != nil {
+		logrus.Fatalf("failed to load package: %s", err)
+	}
+
+	// validate the variables
+	err = pkg.ValidateVarSet(corr.Vars, true)
+	if err != nil {
+		logrus.Fatal("invalid variables: ", err)
 	}
 
 	logrus.Info("generating ssh keys")
@@ -111,22 +137,6 @@ func create(_ *cobra.Command, args []string) {
 	corr.Vars["corral_user_id"] = cfg.UserID
 	corr.Vars["corral_user_public_key"] = string(userPublicKey)
 	corr.Vars["corral_public_key"] = corr.PublicKey
-	for _, raw := range cfgViper.GetStringSlice("variable") {
-		k, v := corral.ToVar(raw)
-		if k == "" {
-			logrus.Fatal("variables should be in the format <key>=<value>")
-		}
-		corr.Vars[k] = v
-	}
-	for k, v := range cfg.Vars { // copy the global vars for future reference
-		corr.Vars[k] = v
-	}
-
-	// load the package
-	pkg, err := _package.LoadPackage(args[1], cfg.PackageCachePath(), cfg.RegistryCredentialsFile())
-	if err != nil {
-		logrus.Fatalf("failed to load package: %s", err)
-	}
 
 	// start a new tf instance in our corral's terraform path
 	_ = corr.Save()
