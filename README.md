@@ -83,6 +83,20 @@ mypkg/
     manifest.yaml
 ```
 
+We can define values a user can set or read by defining values in the manifest. In this manifest we define a variable for our Digitalocean token.  Variables are json schemas so we can define some validation to help the user. Variables can also be marked as sensitive, this prevents corral from returning them when the `vars` command is called.  Manifests may also define variables with `readOnly`, this indicates that the package will set the value for this variable and the user should not attempt to change it.
+
+```yaml
+name: mypkg
+version: 0.1.0
+variables:
+digitalocean_token:
+  sensitive: true
+  type: string
+  optional: false
+  description: "A Digitalocean API token with write permission. https://docs.digitalocean.com/reference/api/create-personal-access-token/"
+
+```
+
 In our terraform module we start with `corral.tf`. This file can be named anything you like but there are a few special
 terraform variables and outputs for interacting with corral.  All these objects are completely optional.
 
@@ -159,10 +173,21 @@ To tell corral to use our script we can add a command to the manifest.
 ```yaml
 name: mypkg
 version: 0.1.0
+digitalocean_token:
+  sensitive: true
+  type: string
+  optional: false
+  description: "A Digitalocean API token with write permission. https://docs.digitalocean.com/reference/api/create-personal-access-token/"
 commands:
   - command: /opt/corral/hello-world.sh
     node_pools:
       - pool1
+```
+
+We can check our work with the `validate` command.
+
+```yaml
+corral pacakge validate ./mypkg
 ```
 
 Finally, we can use our package by calling create.
@@ -174,8 +199,8 @@ corral create test ./mypkg
 If you want to distribute your package you can push it to any OCI compatible registry.
 
 ```shell
-corral login ghcr.io
-corral publish ./mypkg ghcr.io/myghaccount/mypkg:latest
+corral package login ghcr.io
+corral package publish ./mypkg ghcr.io/myghaccount/mypkg:latest
 ```
 
 
