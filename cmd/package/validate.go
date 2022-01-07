@@ -37,7 +37,7 @@ func validate(_ *cobra.Command, args []string) {
 		logrus.Fatal("Terraform module not found.")
 	}
 
-	if i, err := os.Stat(filepath.Join(args[0], "plugins")); err != nil || !i.IsDir() {
+	if i, err := os.Stat(filepath.Join(args[0], "terraform", "plugins")); err != nil || !i.IsDir() {
 		logrus.Warn("terraform plugins folder not found.")
 	}
 

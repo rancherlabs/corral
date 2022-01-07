@@ -12,19 +12,5 @@ output "corral_node_pools" {
       address = droplet.ipv4_address
     }
     ]
-    controlplane = [
-    for droplet in slice(digitalocean_droplet.controlplane, 1, var.controlplane_count) : {
-      name = droplet.name
-      user = "root"
-      address = droplet.ipv4_address
-    }
-    ]
-    agent = [
-    for droplet in digitalocean_droplet.agent[*] : {
-      name = droplet.name
-      user = "root"
-      address = droplet.ipv4_address
-    }
-    ]
   }
 }

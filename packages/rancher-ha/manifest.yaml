@@ -1,0 +1,37 @@
+name: rancher-ha
+version: 0.1.0
+description: Helm install of rancher on highly available k3s cluster.
+variables:
+  digitalocean_token:
+    sensitive: true
+    type: string
+    optional: false
+    description: "A Digitalocean API token with write permission. https://docs.digitalocean.com/reference/api/create-personal-access-token/"
+  digitalocean_domain:
+    sensitive: true
+    type: string
+    optional: false
+    description: "The domain to use for the rancher url."
+  rancher_version:
+    type: string
+    optional: true
+    description: "Specify rancher version to install. Defaults to latest stable version."
+  bootstrap_password:
+    readOnly: true
+    type: string
+    description: "Initial password for the rancher `admin` user."
+  rancher_host:
+    readOnly: true
+    type: string
+    description: "Host of newly created rancher instance."
+commands:
+  - command: /opt/corral/preflight.sh
+    node_pools:
+      - init
+      - controlplane
+  - command: /opt/corral/init-cluster.sh
+    node_pools:
+      - init
+  - command: /opt/corral/add-node.sh
+    node_pools:
+      - controlplane

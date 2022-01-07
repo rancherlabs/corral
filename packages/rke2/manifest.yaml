@@ -1,22 +1,14 @@
 name: rke2
-version: 0.1.0
+version: 0.2.0
 description: >
-  A highly available RKE2 cluster on Digitalocean.
+  A single node RKE2 cluster on Digitalocean.
 commands:
   - command: /opt/corral/preflight.sh
     node_pools:
-      - controlplane
-      - agent
       - init
   - command: /opt/corral/init-cluster.sh
     node_pools:
       - init
-  - command: /opt/corral/install-controlplane.sh
-    node_pools:
-      - controlplane
-  - command: /opt/corral/install-agent.sh
-    node_pools:
-      - agent
 variables:
   digitalocean_token:
     sensitive: true
@@ -24,26 +16,14 @@ variables:
     optional: false
     description: "A Digitalocean API token with write permission. https://docs.digitalocean.com/reference/api/create-personal-access-token/"
   digitalocean_domain:
+    sensitive: true
     type: string
     optional: false
     description: "The domain to use for the api url."
-  controlplane_count:
-    type: integer
-    optional: true
-    description: "How many control-plane nodes should be created."
-    minimum: 1
-  controlplane_size:
+  node_size:
     type: string
     optional: true
-    description: "What size droplet to use for control-plane nodes. https://slugs.do-api.dev/"
-  agent_count:
-    type: integer
-    optional: true
-    description: "How many agent nodes should be created."
-  agent_size:
-    type: string
-    optional: true
-    description: "What size droplet to use for agent nodes. https://slugs.do-api.dev/"
+    description: "What size droplet to use for nodes. https://slugs.do-api.dev/"
   kube_api_host:
     type: string
     readOnly: true

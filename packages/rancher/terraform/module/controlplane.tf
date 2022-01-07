@@ -1,10 +1,5 @@
-variable "node_count" {
-  type = number
-  default = 1
-}
-
 resource "digitalocean_droplet" "node" {
-  count = var.node_count
+  count = 1
 
   name = "${var.corral_user_id}-${random_id.cluster_id.hex}-cp-${count.index}"
   image    = "ubuntu-20-04-x64"
@@ -38,8 +33,4 @@ output "kube_api_host" {
 
 output "rancher_host" {
   value = join(".", [digitalocean_record.rancher_host.name, digitalocean_record.rancher_host.domain])
-}
-
-output "node_count" {
-  value = var.node_count
 }

@@ -57,7 +57,7 @@ spec:
   chart: https://%{KUBERNETES_API}%/static/rancher-${CORRAL_rancher_version}.tgz
   targetNamespace: cattle-system
   set:
-    replicas: $CORRAL_node_count
+    replicas: 1
     hostname: $CORRAL_rancher_host
 EOF
 
@@ -66,8 +66,9 @@ until [ "$(kubectl -n cattle-system get secret/bootstrap-secret -o json --ignore
   sleep 0.1
   echo -n "."
 done
+echo
+
+sed -i "s/127.0.0.1/${CORRAL_kube_api_host}/g" /etc/rancher/k3s/k3s.yaml
 
 echo "corral_set bootstrap_password=$(kubectl -n cattle-system get secret/bootstrap-secret -o json | jq -r '.data.bootstrapPassword' | base64 -d)"
-sed -i "s/127.0.0.1/${CORRAL_kube_api_host}/g" /etc/rancher/k3s/k3s.yaml
-echo "corral_set kubeconfig=$(cat /etc/rancher/k3s/k3s.yaml | base64 -w 0)"
-echo "corral_set node_token=$(cat /var/lib/rancher/k3s/server/node-token)"
+echo "corral_set rancher_version=$CORRAL_rancher_version"
