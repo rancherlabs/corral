@@ -1,0 +1,16 @@
+{
+  "archives": {
+    "linux_amd64": {
+      "hashes": [
+        "h1:c0f7+TFbN+jcsSbPqbl7dMNcvN5hHwgQ995QsSb03zA="
+      ],
+      "url": "terraform-provider-digitalocean_2.16.0_linux_amd64.zip"
+    },
+    "windows_amd64": {
+      "hashes": [
+        "h1:aOnwJaXFLO47cQjiU9UPU9/bsKrAu92p8hNa4lKJeco="
+      ],
+      "url": "terraform-provider-digitalocean_2.16.0_windows_amd64.zip"
+    }
+  }
+}

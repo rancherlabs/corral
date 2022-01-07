@@ -1,9 +1,11 @@
 #!/bin/bash
 
 mkdir -p /etc/rancher/k3s
-echo "cluster-init: true" >> /etc/rancher/k3s/config.yaml
-echo "tls-san:" >> /etc/rancher/k3s/config.yaml
-echo "  - ${CORRAL_kube_api_host}" >> /etc/rancher/k3s/config.yaml
+cat > /etc/rancher/k3s/config.yaml <<- EOF
+cluster-init: true
+tls-san:
+  - ${CORRAL_kube_api_host}
+EOF
 
 curl -sfL https://get.k3s.io | sh -
 

@@ -1,18 +1,14 @@
-variable "controlplane_count" {
-  type = number
-  default = 1
-}
-variable "controlplane_size" {
+variable "node_size" {
   default = "s-1vcpu-2gb"
 }
 
 resource "digitalocean_droplet" "controlplane" {
-  count = var.controlplane_count
+  count = 1
 
   name = "${var.corral_user_id}-${random_id.cluster_id.hex}-cp-${count.index}"
   image    = "ubuntu-20-04-x64"
   region   = "sfo3"
-  size     = var.controlplane_size
+  size     = var.node_size
   tags = [var.corral_user_id, var.corral_name]
   ssh_keys = [digitalocean_ssh_key.corral_key.id]
 }
