@@ -17,7 +17,7 @@ jobs:
       - run: scripts/build
       - run: install dist/corral-"$VERSION"-amd64 /usr/local/bin/corral
       - run: corral config --user_id ci --public_key=/dev/null
-      - run: corral login --username ${{ github.actor }} --password ${{ secrets.GITHUB_TOKEN }} ghcr.io
+      - run: corral package login --username ${{ github.actor }} --password ${{ secrets.GITHUB_TOKEN }} ghcr.io
       - run: scripts/push-packages
       - uses: softprops/action-gh-release@v1
         env:
