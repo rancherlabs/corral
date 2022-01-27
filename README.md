@@ -2,8 +2,12 @@
 Corral is a CLI tool for creating and packaging reproducible development environments.  Corral allows developers to manage multiple environments, called corrals, and provision them consistantly using shared packages.
 
 # Available Packages
-- `ghcr.io/rancherlabs/corral/k3s:latest`: Create a single node or HA k3s cluster in Digitalocean.
-- `ghcr.io/rancherlabs/corral/rke2:latest`: Create a single node or HA rke2 cluster in Digitalocean.
+- `ghcr.io/rancherlabs/corral/k3s:latest`: Create a single node k3s cluster in Digitalocean.
+- `ghcr.io/rancherlabs/corral/k3s-ha:latest`: Create a highly available k3s cluster in Digitalocean.
+- `ghcr.io/rancherlabs/corral/rke2:latest`: Create a single node rke2 cluster in Digitalocean.
+- `ghcr.io/rancherlabs/corral/rke2-ha:latest`: Create a highly available rke2 cluster in Digitalocean.
+- `ghcr.io/rancherlabs/corral/rancher:latest`: Create a single node rancher in Digitalocean.
+- `ghcr.io/rancherlabs/corral/rancher-ha:latest`: Create a HA rancher in Digitalocean.
 
 This repo contains a few packages to get started! These packages share some common variables between them.
 
@@ -45,7 +49,7 @@ corral list
 ```
 
 ## Vars
-Next lets connect to our cluster. We can get the Kubernetes configuration file from the corral's variables. The file is base64 encoded so we will need to decode it before we can use it.
+Next lets connect to our cluster. We can get the Kubernetes configuration file from the corral's variables. The file is base64 encoded, so we will need to decode it before we can use it.
 
 ```shell
 corral vars simple kubeconfig | base64 --decode > simple.yaml
@@ -77,7 +81,6 @@ mypkg/
         module/
             main.tf
             corral.tf
-        plugins/
     scripts/
         hello-world.sh
     manifest.yaml
@@ -87,14 +90,12 @@ We can define values a user can set or read by defining values in the manifest. 
 
 ```yaml
 name: mypkg
-version: 0.1.0
 variables:
-digitalocean_token:
-  sensitive: true
-  type: string
-  optional: false
-  description: "A Digitalocean API token with write permission. https://docs.digitalocean.com/reference/api/create-personal-access-token/"
-
+    digitalocean_token:
+      sensitive: true
+      type: string
+      optional: false
+      description: "A Digitalocean API token with write permission. https://docs.digitalocean.com/reference/api/create-personal-access-token/"
 ```
 
 In our terraform module we start with `corral.tf`. This file can be named anything you like but there are a few special
@@ -151,13 +152,6 @@ resource "digitalocean_droplet" "hello_world" {
 }
 ```
 
-Once we are satisfied with our terraform module we can download all the required plugins.  Terraform plugins are included in packages.
-
-```shell
-cd mypkg/terraform/module
-terraform providers mirror -platform=linux_amd64 -platform=windows_amd64 ../plugins/
-```
-
 Now let's add a script called `mypkg/scripts/hello-world.sh` to install our user public key and get the node's hostname. To do this we can read the user public key from the environment.  All corral variables are available as `CORRAL_<variable name>`.  If you want to set additional variables for the next script or future reference you can use the `corral_set` command by writing to standard out.
 
 ```shell
@@ -172,12 +166,12 @@ To tell corral to use our script we can add a command to the manifest.
 
 ```yaml
 name: mypkg
-version: 0.1.0
-digitalocean_token:
-  sensitive: true
-  type: string
-  optional: false
-  description: "A Digitalocean API token with write permission. https://docs.digitalocean.com/reference/api/create-personal-access-token/"
+variables:
+    digitalocean_token:
+      sensitive: true
+      type: string
+      optional: false
+      description: "A Digitalocean API token with write permission. https://docs.digitalocean.com/reference/api/create-personal-access-token/"
 commands:
   - command: /opt/corral/hello-world.sh
     node_pools:

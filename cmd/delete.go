@@ -5,9 +5,9 @@ import (
 	"errors"
 	"os"
 
-	"github.com/hashicorp/terraform-exec/tfexec"
 	"github.com/rancherlabs/corral/pkg/config"
 	"github.com/rancherlabs/corral/pkg/corral"
+	_package "github.com/rancherlabs/corral/pkg/package"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -24,9 +24,6 @@ func NewCommandDelete() *cobra.Command {
 		Long:  deleteDescription,
 		Args:  cobra.MinimumNArgs(1),
 		Run:   deleteCorral,
-		PreRun: func(_ *cobra.Command, _ []string) {
-			cfg = config.Load()
-		},
 	}
 
 	cmd.Flags().Bool("dry-run", false, "Display what resources this corral will create.")
@@ -37,7 +34,7 @@ func NewCommandDelete() *cobra.Command {
 
 func deleteCorral(_ *cobra.Command, args []string) {
 	for _, name := range args {
-		c, err := corral.Load(cfg.CorralPath(name))
+		c, err := corral.Load(config.CorralPath(name))
 		if err != nil {
 			if errors.Is(err, os.ErrNotExist) {
 				logrus.Warnf("skipping corral [%s], does not exist", name)
@@ -50,7 +47,15 @@ func deleteCorral(_ *cobra.Command, args []string) {
 		c.SetStatus(corral.StatusDeleting)
 
 		logrus.Infof("running terraform destroy for [%s]", name)
-		tf, _ := tfexec.NewTerraform(c.TerraformPath(), cfg.AppPath("bin", "terraform"))
+		pkg, err := _package.LoadPackage(c.Source)
+		if err != nil {
+			logrus.Error("could not load package associated with corral: ", err)
+		}
+
+		tf, err := config.NewTerraform(c.TerraformPath(), pkg.TerraformVersion())
+		if err != nil {
+			logrus.Fatal("failed to load terraform: ", err)
+		}
 		if debug {
 			tf.SetStdout(os.Stdout)
 		}

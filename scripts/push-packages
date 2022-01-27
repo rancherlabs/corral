@@ -2,7 +2,10 @@
 
 cd packages
 for pkg in *; do
-    tag=$(cat $pkg/manifest.yaml  | grep version | sed "s/version: /v/")
-    corral package publish $pkg "ghcr.io/rancherlabs/corral/$pkg:$tag"
+  if [[ "$VERSION" =~ .*-.*$ ]]
+  then
+    corral package publish $pkg "ghcr.io/rancherlabs/corral/$pkg:dev"
+  else
     corral package publish $pkg "ghcr.io/rancherlabs/corral/$pkg:latest"
+  fi
 done

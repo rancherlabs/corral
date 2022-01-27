@@ -1,6 +1,8 @@
 name: valid
-version: 0.1.0
 description: "valid description"
+annotations:
+  foo: bar
+  baz: "1"
 commands:
   - node_pools:
       - foo

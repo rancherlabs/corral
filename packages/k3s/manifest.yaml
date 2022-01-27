@@ -1,5 +1,4 @@
 name: k3s
-version: 0.2.0
 description: >
   A single node k3s cluster on Digitalocean.
 commands:

@@ -28,9 +28,6 @@ func NewCommandVars() *cobra.Command {
 		Long:  varsDescription,
 		Run:   vars,
 		Args:  cobra.MinimumNArgs(1),
-		PreRun: func(_ *cobra.Command, _ []string) {
-			cfg = config.Load()
-		},
 	}
 
 	cmd.Flags().Bool("sensitive", false, "Sensitive values will be displayed if this flag is true.")
@@ -41,7 +38,7 @@ func NewCommandVars() *cobra.Command {
 func vars(cmd *cobra.Command, args []string) {
 	corralName := args[0]
 
-	c, err := corral.Load(cfg.CorralPath(corralName))
+	c, err := corral.Load(config.CorralPath(corralName))
 	if err != nil {
 		logrus.Fatal("failed to load corral: ", err)
 	}
@@ -52,7 +49,7 @@ func vars(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	pkg, err := _package.LoadPackage(c.Source, cfg.PackageCachePath(), cfg.RegistryCredentialsFile())
+	pkg, err := _package.LoadPackage(c.Source)
 	if err != nil {
 		logrus.Fatal("failed to load corral package: ", err)
 	}

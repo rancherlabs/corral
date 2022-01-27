@@ -3,11 +3,9 @@ package cmd_package
 import (
 	"fmt"
 
-	"github.com/rancherlabs/corral/pkg/config"
+	_package "github.com/rancherlabs/corral/pkg/package"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"oras.land/oras-go/pkg/auth"
-	dockerauth "oras.land/oras-go/pkg/auth/docker"
 )
 
 func NewCommandLogin() *cobra.Command {
@@ -15,10 +13,7 @@ func NewCommandLogin() *cobra.Command {
 		Use:   "login REGISTRY",
 		Short: "Login to an OCI registry.",
 		Args:  cobra.ExactArgs(1),
-		PreRun: func(_ *cobra.Command, _ []string) {
-			cfg = config.Load()
-		},
-		Run: login,
+		Run:   login,
 	}
 
 	cmd.Flags().String("username", "", "The username for the registry.")
@@ -39,15 +34,7 @@ func login(cmd *cobra.Command, args []string) {
 		password = prompt(fmt.Sprintf("password: "))
 	}
 
-	da, err := dockerauth.NewClient(cfg.RegistryCredentialsFile())
-	if err != nil {
-		logrus.Fatalf("error getting auth client: %s", err)
-	}
-
-	err = da.LoginWithOpts(auth.WithLoginHostname(args[0]),
-		auth.WithLoginUsername(username),
-		auth.WithLoginSecret(password),
-		auth.WithLoginUserAgent(corralUserAgent))
+	err := _package.AddRegistryCredentials(args[0], username, password)
 	if err != nil {
 		logrus.Fatalf("error authenticating with registry: %s", err)
 	}

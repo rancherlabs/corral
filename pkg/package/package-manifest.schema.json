@@ -1,7 +1,7 @@
 {
   "title": "Corral Package Manifest",
   "type": "object",
-  "required": ["name", "version", "description"],
+  "required": ["name", "description"],
   "properties": {
     "name": {
       "type": "string",
@@ -9,10 +9,10 @@
       "maxLength": 16,
       "description": "The name of the package."
     },
-    "version": {
-      "type": "string",
-      "minLength": 5,
-      "description": "The package version. This value should be a valid semver."
+    "annotations": {
+      "type": "object",
+      "additionalProperties": {"type": "string"},
+      "description": "Additional information about this package."
     },
     "description": {
       "type": "string",

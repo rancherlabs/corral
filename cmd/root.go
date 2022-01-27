@@ -2,12 +2,10 @@ package cmd
 
 import (
 	cmd_package "github.com/rancherlabs/corral/cmd/package"
-	"github.com/rancherlabs/corral/pkg/config"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
-var cfg config.Config
 var debug bool
 
 func Execute() {
