@@ -1,8 +1,11 @@
 package cmd_package
 
 import (
+	"time"
+
 	"github.com/rancherlabs/corral/pkg/config"
 	_package "github.com/rancherlabs/corral/pkg/package"
+	"github.com/rancherlabs/corral/pkg/version"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -21,19 +24,34 @@ func NewCommandPublish() *cobra.Command {
 		Long:  publishDescription,
 		Run:   publish,
 		Args:  cobra.ExactArgs(2),
-		PreRun: func(_ *cobra.Command, _ []string) {
-			cfg = config.Load()
-		},
 	}
 
 	return cmd
 }
 
 func publish(_ *cobra.Command, args []string) {
-	err := _package.UploadPackage(args[0], args[1], cfg.RegistryCredentialsFile())
+	cfg := config.Load()
+
+	pkg, err := _package.LoadPackage(args[0])
+	if err != nil {
+		logrus.Fatal("failed to load package: ", err)
+	}
+
+	setAnnotationIfEmpty(pkg.Annotations, _package.TerraformVersionAnnotation, version.TerraformVersion)
+	setAnnotationIfEmpty(pkg.Annotations, _package.PublisherAnnotation, cfg.UserID)
+	setAnnotationIfEmpty(pkg.Annotations, _package.CorralVersionAnnotation, version.Version)
+	setAnnotationIfEmpty(pkg.Annotations, _package.PublishTimestampAnnotation, time.Now().UTC().Format(time.RFC3339))
+
+	err = _package.UploadPackage(pkg, args[1])
 	if err != nil {
 		logrus.Fatal("failed to push package: ", err)
 	}
 
 	logrus.Info("success")
+}
+
+func setAnnotationIfEmpty(annotations map[string]string, key, value string) {
+	if annotations != nil && annotations[key] == "" {
+		annotations[key] = value
+	}
 }

@@ -15,23 +15,20 @@ func NewCommandList() *cobra.Command {
 		Short: "List all corrals on this system.",
 		Long:  "List all corrals on this system.",
 		Run:   list,
-		PreRun: func(_ *cobra.Command, _ []string) {
-			cfg = config.Load()
-		},
 	}
 
 	return cmd
 }
 
 func list(_ *cobra.Command, _ []string) {
-	corralNames, _ := os.ReadDir(cfg.CorralPath(""))
+	corralNames, _ := os.ReadDir(config.CorralRoot("corrals"))
 
 	tbl := table.NewWriter()
 	tbl.SetOutputMirror(os.Stdout)
 	tbl.AppendHeader(table.Row{"NAME", "STATUS"})
 	tbl.AppendSeparator()
 	for _, entry := range corralNames {
-		c, err := corral.Load(cfg.CorralPath(entry.Name()))
+		c, err := corral.Load(config.CorralRoot("corrals", entry.Name()))
 		if err != nil {
 			continue
 		}

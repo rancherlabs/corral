@@ -18,8 +18,11 @@ func TestLoadManifest(t *testing.T) {
 		assert.NoError(t, err)
 
 		assert.Equal(t, "valid", res.Name)
-		assert.Equal(t, "0.1.0", res.Version)
 		assert.Equal(t, "valid description", res.Description)
+
+		assert.NotNil(t, res.Annotations)
+		assert.Equal(t, res.Annotations["foo"], "bar")
+		assert.Equal(t, res.Annotations["baz"], "1")
 
 		assert.Len(t, res.Commands, 1)
 		assert.Equal(t, "whoami", res.Commands[0].Command)

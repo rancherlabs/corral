@@ -6,8 +6,9 @@ import (
 	"os/user"
 	"path/filepath"
 
+	"github.com/rancherlabs/corral/pkg/config"
 	"github.com/rancherlabs/corral/pkg/corral"
-	"github.com/rancherlabs/corral/pkg/install"
+	"github.com/rancherlabs/corral/pkg/version"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -20,8 +21,8 @@ func NewCommandConfig() *cobra.Command {
 		Run:   configCorral,
 	}
 
-	cmd.Flags().String("user_id", cfg.UserID, "The user id is used by packages to help identify resources.")
-	cmd.Flags().String("public_key", cfg.UserPublicKeyPath, "Path to a public key you want packages to install on nodes.")
+	cmd.Flags().String("user_id", "", "The user id is used by packages to help identify resources.")
+	cmd.Flags().String("public_key", "", "Path to a public key you want packages to install on nodes.")
 	cmd.Flags().StringArrayP("variable", "v", []string{}, "Global variable applied to all corrals.")
 
 	return cmd
@@ -65,8 +66,17 @@ func configCorral(cmd *cobra.Command, _ []string) {
 
 	logrus.Info("installing corral, this can take a minute")
 
-	err := install.Install(userId, userPublicKeyPath, globalVars)
-	if err != nil {
+	if err := config.Install(); err != nil {
+		logrus.Fatal(err)
+	}
+
+	newCfg := &config.Config{
+		UserID:            userId,
+		UserPublicKeyPath: userPublicKeyPath,
+		Version:           version.Version,
+		Vars:              globalVars,
+	}
+	if err := newCfg.Save(); err != nil {
 		logrus.Fatal("error saving configuration: ", err)
 	}
 

@@ -47,8 +47,6 @@ func NewCommandCreate() *cobra.Command {
 		Args:  cobra.RangeArgs(1, 2),
 		Run:   create,
 		PreRun: func(cmd *cobra.Command, _ []string) {
-			cfg = config.Load()
-
 			cfgFile := cmd.Flags().Lookup("config").Value.String()
 			if cfgFile != "" {
 				cfgViper.AddConfigPath(cfgFile)
@@ -75,8 +73,10 @@ func NewCommandCreate() *cobra.Command {
 }
 
 func create(_ *cobra.Command, args []string) {
+	cfg := config.Load()
+
 	var corr corral.Corral
-	corr.RootPath = cfg.CorralPath(args[0])
+	corr.RootPath = config.CorralPath(args[0])
 	corr.Name = args[0]
 	corr.Source = args[1]
 	corr.NodePools = map[string][]corral.Node{}
@@ -111,7 +111,7 @@ func create(_ *cobra.Command, args []string) {
 
 	// load the package
 	logrus.Info("loading package")
-	pkg, err := _package.LoadPackage(corr.Source, cfg.PackageCachePath(), cfg.RegistryCredentialsFile())
+	pkg, err := _package.LoadPackage(corr.Source)
 	if err != nil {
 		logrus.Fatalf("failed to load package: %s", err)
 	}
@@ -140,7 +140,10 @@ func create(_ *cobra.Command, args []string) {
 
 	// start a new tf instance in our corral's terraform path
 	_ = corr.Save()
-	tf, _ := tfexec.NewTerraform(corr.TerraformPath(), cfg.AppPath("bin", "terraform"))
+	tf, err := config.NewTerraform(corr.TerraformPath(), pkg.TerraformVersion())
+	if err != nil {
+		logrus.Fatal("failed to get load terraform: ", err)
+	}
 
 	defer func() {
 		if corr.Status < corral.StatusReady {
@@ -164,10 +167,8 @@ func create(_ *cobra.Command, args []string) {
 
 	logrus.Info("initializing terraform module")
 	err = tf.Init(context.Background(),
-		tfexec.Get(false),
 		tfexec.Upgrade(false),
-		tfexec.FromModule(pkg.TerraformModulePath()),
-		tfexec.PluginDir(pkg.TerraformPluginPath()))
+		tfexec.FromModule(pkg.TerraformModulePath()))
 	if err != nil {
 		logrus.Error(err)
 		return

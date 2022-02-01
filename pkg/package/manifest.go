@@ -21,7 +21,7 @@ type Command struct {
 
 type Manifest struct {
 	Name            string            `yaml:"name"`
-	Version         string            `yaml:"version"`
+	Annotations     map[string]string `yaml:"annotations"`
 	Description     string            `yaml:"description"`
 	Commands        []Command         `yaml:"commands"`
 	VariableSchemas map[string]Schema `yaml:"-"`
@@ -69,6 +69,10 @@ func LoadManifest(_fs fs.FS, path string) (Manifest, error) {
 	}
 
 	manifest.VariableSchemas = parseVariableSchema(buf)
+
+	if manifest.Annotations == nil {
+		manifest.Annotations = map[string]string{}
+	}
 
 	return manifest, err
 }
@@ -128,6 +132,14 @@ func (m *Manifest) FilterSensitiveVars(vars VarSet) VarSet {
 	}
 
 	return rval
+}
+
+func (m *Manifest) GetAnnotation(key string) string {
+	if m.Annotations != nil {
+		return m.Annotations[key]
+	}
+
+	return ""
 }
 
 // validateManifest returns an error of the manifest violates any rules defined in the package-manifest.schema.json
