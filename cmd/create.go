@@ -68,7 +68,7 @@ func NewCommandCreate() *cobra.Command {
 	cmd.Flags().StringArrayP("variable", "v", []string{}, "Set a variable to configure the package.")
 	_ = cfgViper.BindPFlag("variable", cmd.Flags().Lookup("variable"))
 
-	cmd.Flags().String("package", "", "Set a variable to configure the package.")
+	cmd.Flags().StringP("package", "p", "", "Set a variable to configure the package.")
 	_ = cfgViper.BindPFlag("package", cmd.Flags().Lookup("package"))
 
 	return cmd
@@ -78,18 +78,16 @@ func create(_ *cobra.Command, args []string) {
 	var corr corral.Corral
 	corr.RootPath = cfg.CorralPath(args[0])
 	corr.Name = args[0]
-	corr.Source = args[1]
+	corr.Source = cfgViper.GetString("package")
 	corr.NodePools = map[string][]corral.Node{}
 	corr.Vars = map[string]string{}
-	corr.Source = cfgViper.GetString("package")
 
+	if len(args) > 1 {
+		corr.Source = args[1]
+	}
 	// get the source from flags or args
 	if corr.Source == "" {
-		if len(args) < 2 {
-			logrus.Fatal("You must specify a package with the `-p` flag or as an argument.")
-		}
-
-		corr.Source = args[1]
+		logrus.Fatal("You must specify a package with the `-p` flag or as an argument.")
 	}
 
 	// ensure this corral is unique
