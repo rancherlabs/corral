@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"github.com/rancherlabs/corral/cmd/config"
 	cmd_package "github.com/rancherlabs/corral/cmd/package"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -26,7 +27,7 @@ func Execute() {
 	}
 
 	rootCmd.AddCommand(
-		NewCommandConfig(),
+		config.NewCommandConfig(),
 		NewCommandDelete(),
 		NewCommandList(),
 		NewCommandVars(),
