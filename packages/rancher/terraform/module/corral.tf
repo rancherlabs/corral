@@ -5,7 +5,6 @@ variable "corral_public_key" {}
 
 // tf errors when unexpected variables are passed
 variable "rancher_version" {
-  default = ""
 }
 
 output "corral_node_pools" {

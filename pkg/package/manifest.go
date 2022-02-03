@@ -3,6 +3,7 @@ package _package
 import (
 	_ "embed"
 	"fmt"
+	"strings"
 
 	"bytes"
 	"encoding/json"
@@ -77,6 +78,31 @@ func LoadManifest(_fs fs.FS, path string) (Manifest, error) {
 	return manifest, err
 }
 
+func (m *Manifest) ApplyDefaultVars(vars VarSet) error {
+	for k, schema := range m.VariableSchemas {
+
+		if _, ok := vars[k]; !ok {
+			vars[k] = schema.Default
+		}
+	}
+
+	return nil
+}
+
+// ValidateDefaults returns an error if the var set does not match the manifest variable schemas.
+func (m *Manifest) ValidateDefaults() error {
+	for _, schema := range m.VariableSchemas {
+		if schema.Default != "" {
+			err := schema.Validate(schema.Default)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
 // ValidateVarSet returns an error if the var set does not match the manifest variable schemas.
 func (m *Manifest) ValidateVarSet(vars VarSet, write bool) error {
 	for k, schema := range m.VariableSchemas {
@@ -86,7 +112,7 @@ func (m *Manifest) ValidateVarSet(vars VarSet, write bool) error {
 			return fmt.Errorf("[%s] may not be set", k)
 		}
 
-		if _, ok := vars[k]; !schema.Optional && !schema.ReadOnly && !ok {
+		if _, ok := vars[k]; !schema.Optional && !schema.ReadOnly && schema.Default == "" && !ok {
 			return fmt.Errorf("[%s] is required", k)
 		}
 
@@ -209,6 +235,14 @@ func parseVariableSchema(manifest []byte) map[string]Schema {
 
 			if description, okk := vv["description"].(string); okk {
 				schema.Description = description
+			}
+
+			if dflt, okk := vv["default"]; okk {
+				b, _ := json.Marshal(dflt)
+				s := string(b)
+				s = strings.TrimSuffix(s, "\"")
+				s = strings.TrimPrefix(s, "\"")
+				schema.Default = s
 			}
 		}
 

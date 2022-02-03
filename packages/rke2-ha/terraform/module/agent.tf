@@ -1,9 +1,7 @@
 variable "agent_count" {
   type = number
-  default = 1
 }
 variable "agent_size" {
-  default = "s-2vcpu-4gb"
 }
 
 resource "digitalocean_droplet" "agent" {
