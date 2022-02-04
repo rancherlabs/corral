@@ -22,7 +22,8 @@ const (
 	PackageScriptDestination = "/opt/corral"
 	connectionTimeout        = 5 * time.Second
 
-	corralSetVarCommand = "corral_set"
+	corralSetVarCommand     = "corral_set"
+	corralLogMessageCommand = "corral_log"
 )
 
 type Shell struct {
@@ -265,6 +266,11 @@ func (s *Shell) connectStdout() {
 			}
 
 			s.Vars[k] = v
+		} else if strings.HasPrefix(text, corralLogMessageCommand) {
+			vs := strings.TrimPrefix(text, corralLogMessageCommand)
+			vs = strings.Trim(vs, " \t")
+
+			logrus.Info(vs)
 		}
 
 		if s.Verbose {
