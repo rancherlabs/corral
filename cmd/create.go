@@ -10,6 +10,7 @@ import (
 	"encoding/pem"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -223,10 +224,12 @@ func create(_ *cobra.Command, args []string) {
 			continue
 		}
 
-		var val string
-		_ = json.Unmarshal(v.Value, &val)
+		var buf bytes.Buffer
+		_ = json.Compact(&buf, v.Value)
 
-		corr.Vars[k] = val
+		corr.Vars[k] = buf.String()
+		corr.Vars[k] = strings.TrimPrefix(corr.Vars[k], "\"")
+		corr.Vars[k] = strings.TrimSuffix(corr.Vars[k], "\"")
 	}
 
 	var nodes []corral.Node
