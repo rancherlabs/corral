@@ -141,6 +141,7 @@ func create(_ *cobra.Command, args []string) {
 	corr.Vars["corral_user_id"] = cfg.UserID
 	corr.Vars["corral_user_public_key"] = string(userPublicKey)
 	corr.Vars["corral_public_key"] = corr.PublicKey
+	corr.Vars["corral_private_key"] = corr.PrivateKey
 
 	// start a new tf instance in our corral's terraform path
 	_ = corr.Save()
@@ -225,6 +226,7 @@ func create(_ *cobra.Command, args []string) {
 				corr.SetStatus(corral.StatusError)
 				logrus.Error("failed to parse corral node pools: ", err)
 			}
+			corr.Vars["corral_node_pools"] = string(v.Value)
 
 			continue
 		}
