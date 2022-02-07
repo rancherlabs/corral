@@ -4,7 +4,6 @@ variable "corral_user_public_key" {}
 variable "corral_public_key" {}
 
 variable "rancher_version" {
-  default = ""
 }
 
 output "corral_node_pools" {

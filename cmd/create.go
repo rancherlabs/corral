@@ -121,6 +121,11 @@ func create(_ *cobra.Command, args []string) {
 		logrus.Fatal("invalid variables: ", err)
 	}
 
+	err = pkg.ApplyDefaultVars(corr.Vars)
+	if err != nil {
+		logrus.Fatal("invalid defaults: ", err)
+	}
+
 	logrus.Info("generating ssh keys")
 	privkey, _ := generatePrivateKey(2048)
 	pubkey, _ := generatePublicKey(&privkey.PublicKey)

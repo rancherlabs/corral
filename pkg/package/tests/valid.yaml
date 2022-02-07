@@ -19,3 +19,6 @@ variables:
   d:
     type: boolean
     optional: true
+  e:
+    type: string
+    default: test

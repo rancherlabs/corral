@@ -23,6 +23,7 @@ variables:
       type: string
       optional: true
       description: "What size droplet to use for the node nodes. https://slugs.do-api.dev/"
+      default: "s-1vcpu-2gb"
   kube_api_host:
     type: string
     readOnly: true

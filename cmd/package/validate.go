@@ -33,7 +33,12 @@ func validate(_ *cobra.Command, args []string) {
 		logrus.Fatal("Terraform module not found.")
 	}
 
-	_, err := _package.LoadPackage(args[0])
+	pkg, err := _package.LoadPackage(args[0])
+	if err != nil {
+		logrus.Fatal(err)
+	}
+
+	err = pkg.ValidateDefaults()
 	if err != nil {
 		logrus.Fatal(err)
 	}

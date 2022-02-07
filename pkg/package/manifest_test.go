@@ -30,7 +30,7 @@ func TestLoadManifest(t *testing.T) {
 		assert.Len(t, res.Commands[0].NodePoolNames, 1)
 		assert.Equal(t, "foo", res.Commands[0].NodePoolNames[0])
 
-		assert.Len(t, res.VariableSchemas, 4)
+		assert.Len(t, res.VariableSchemas, 5)
 
 		assert.NotNil(t, res.VariableSchemas["a"])
 		assert.False(t, res.VariableSchemas["a"].Sensitive)
@@ -135,11 +135,12 @@ func TestFilterVars(t *testing.T) {
 		"c": "",
 		"d": "",
 		"e": "",
+		"f": "",
 	}
 
 	res := manifest.FilterVars(vars)
 
-	assert.Equal(t, res, _package.VarSet{"a": "", "b": "", "c": "", "d": ""})
+	assert.Equal(t, res, _package.VarSet{"a": "", "b": "", "c": "", "d": "", "e": ""})
 }
 
 func TestFilterSensitiveVars(t *testing.T) {

@@ -1,9 +1,7 @@
 variable "controlplane_count" {
   type = number
-  default = 3
 }
 variable "controlplane_size" {
-  default = "s-1vcpu-2gb"
 }
 
 resource "digitalocean_droplet" "controlplane" {

@@ -69,6 +69,10 @@
           "type": "boolean",
           "default": true,
           "description": "If a variable is marked as read only it can only returned by a corral, not set."
+        },
+        "default": {
+          "type": "object",
+          "description": "If a variable has a default value and a value is not present for that variable, the default value will be used instead."
         }
       }
     }

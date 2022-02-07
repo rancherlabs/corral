@@ -33,19 +33,23 @@ variables:
     optional: true
     description: "How many control-plane nodes should be created."
     minimum: 1
+    default: 3
   controlplane_size:
     type: string
     optional: true
     description: "What size droplet to use for control-plane nodes. https://slugs.do-api.dev/"
+    default: "s-2vcpu-4gb"
   agent_count:
     type: integer
     optional: true
     minimum: 1
     description: "How many agent nodes should be created."
+    default: 1
   agent_size:
     type: string
     optional: true
     description: "What size droplet to use for agent nodes. https://slugs.do-api.dev/"
+    default: "s-2vcpu-4gb"
   kube_api_host:
     type: string
     readOnly: true

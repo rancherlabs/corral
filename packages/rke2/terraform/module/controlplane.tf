@@ -1,5 +1,4 @@
 variable "node_size" {
-  default = "s-2vcpu-4gb"
 }
 
 resource "digitalocean_droplet" "controlplane" {
