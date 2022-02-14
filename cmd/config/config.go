@@ -1,4 +1,4 @@
-package cmd
+package config
 
 import (
 	"fmt"
@@ -6,9 +6,8 @@ import (
 	"os/user"
 	"path/filepath"
 
+	"github.com/rancherlabs/corral/cmd/config/vars"
 	"github.com/rancherlabs/corral/pkg/config"
-	"github.com/rancherlabs/corral/pkg/corral"
-	"github.com/rancherlabs/corral/pkg/version"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -23,45 +22,47 @@ func NewCommandConfig() *cobra.Command {
 
 	cmd.Flags().String("user_id", "", "The user id is used by packages to help identify resources.")
 	cmd.Flags().String("public_key", "", "Path to a public key you want packages to install on nodes.")
-	cmd.Flags().StringArrayP("variable", "v", []string{}, "Global variable applied to all corrals.")
+
+	cmd.AddCommand(vars.NewVarsCommand())
 
 	return cmd
 }
 
 func configCorral(cmd *cobra.Command, _ []string) {
+	cfg, _ := config.Load()
 	userId, _ := cmd.Flags().GetString("user_id")
+	if userId != "" {
+		cfg.UserID = userId
+	}
 	userPublicKeyPath, _ := cmd.Flags().GetString("public_key")
+	if userPublicKeyPath != "" {
+		cfg.UserPublicKeyPath = userPublicKeyPath
+	}
 
 	if userId == "" {
-		u, _ := user.Current()
-		if u != nil {
-			userId = u.Username
+		if cfg.UserID == "" {
+			u, _ := user.Current()
+			if u != nil {
+				cfg.UserID = u.Username
+			}
 		}
 
-		if input := prompt(fmt.Sprintf("How should packages identify you(%s): ", userId)); len(input) > 0 {
-			userId = input
+		if input := prompt(fmt.Sprintf("How should packages identify you(%s): ", cfg.UserID)); len(input) > 0 {
+			cfg.UserID = input
 		}
 	}
 
 	if userPublicKeyPath == "" {
-		userRoot, _ := os.UserHomeDir()
-		if userRoot != "" {
-			userPublicKeyPath = filepath.Join(userRoot, ".ssh", "id_rsa.pub")
+		if cfg.UserPublicKeyPath == "" {
+			userRoot, _ := os.UserHomeDir()
+			if userRoot != "" {
+				cfg.UserPublicKeyPath = filepath.Join(userRoot, ".ssh", "id_rsa.pub")
+			}
 		}
 
-		if input := prompt(fmt.Sprintf("What ssh public key should packages use (%s): ", userPublicKeyPath)); len(input) > 0 {
-			userPublicKeyPath = input
+		if input := prompt(fmt.Sprintf("What ssh public key should packages use (%s): ", cfg.UserPublicKeyPath)); len(input) > 0 {
+			cfg.UserPublicKeyPath = input
 		}
-	}
-
-	globalVars := map[string]string{}
-	globalVarsSlice, _ := cmd.Flags().GetStringArray("variable")
-	for _, raw := range globalVarsSlice {
-		k, v := corral.ToVar(raw)
-		if k == "" {
-			logrus.Fatal("variables should be in the format <key>=<value>")
-		}
-		globalVars[k] = v
 	}
 
 	logrus.Info("installing corral, this can take a minute")
@@ -70,13 +71,7 @@ func configCorral(cmd *cobra.Command, _ []string) {
 		logrus.Fatal(err)
 	}
 
-	newCfg := &config.Config{
-		UserID:            userId,
-		UserPublicKeyPath: userPublicKeyPath,
-		Version:           version.Version,
-		Vars:              globalVars,
-	}
-	if err := newCfg.Save(); err != nil {
+	if err := cfg.Save(); err != nil {
 		logrus.Fatal("error saving configuration: ", err)
 	}
 

@@ -74,7 +74,7 @@ func NewCommandCreate() *cobra.Command {
 }
 
 func create(_ *cobra.Command, args []string) {
-	cfg := config.Load()
+	cfg := config.MustLoad()
 
 	var corr corral.Corral
 	corr.RootPath = config.CorralPath(args[0])

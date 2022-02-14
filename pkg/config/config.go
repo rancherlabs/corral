@@ -26,20 +26,28 @@ type Config struct {
 	Vars map[string]string `yaml:"vars"`
 }
 
-func Load() Config {
+func MustLoad() Config {
+	c, err := Load()
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			logrus.Fatal("You must call `corral config` before using this command.")
+		}
+		logrus.Fatal("Configuration file is invalid", err)
+	}
+	return c
+}
+
+func Load() (Config, error) {
 	var c Config
 	var err error
 
 	body, err := os.ReadFile(CorralRoot("config.yaml"))
-	if errors.Is(err, os.ErrNotExist) {
-		logrus.Fatal("You must call `corral config` before using this command.")
-	}
 	if err != nil {
-		logrus.Fatal("An unknown error occurred loading the configuration", err)
+		return Config{}, err
 	}
 
 	if err := yaml.Unmarshal(body, &c); err != nil {
-		logrus.Fatal("Configuration file is invalid", err)
+		return Config{}, err
 	}
 
 	if version.Version != c.Version {
@@ -55,7 +63,7 @@ func Load() Config {
 
 	}
 
-	return c
+	return c, nil
 }
 
 func (c *Config) Save() (err error) {

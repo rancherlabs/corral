@@ -30,7 +30,7 @@ func NewCommandPublish() *cobra.Command {
 }
 
 func publish(_ *cobra.Command, args []string) {
-	cfg := config.Load()
+	cfg := config.MustLoad()
 
 	pkg, err := _package.LoadPackage(args[0])
 	if err != nil {
