@@ -31,3 +31,12 @@ commands:
   - command: /opt/corral/init-cluster.sh
     node_pools:
       - init
+  - command: /opt/corral/install-cert-manager.sh
+    node_pools:
+      - init
+  - command: /opt/corral/install-rancher.sh
+    node_pools:
+      - init
+  - command: /opt/corral/wait-for-password.sh
+    node_pools:
+      - init
