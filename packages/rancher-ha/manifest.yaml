@@ -35,3 +35,12 @@ commands:
   - command: /opt/corral/add-node.sh
     node_pools:
       - controlplane
+  - command: /opt/corral/install-cert-manager.sh
+    node_pools:
+      - init
+  - command: /opt/corral/install-rancher.sh
+    node_pools:
+      - init
+  - command: /opt/corral/wait-for-password.sh
+    node_pools:
+      - init
