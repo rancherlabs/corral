@@ -3,6 +3,7 @@ package shell
 import (
 	"bufio"
 	"fmt"
+	"github.com/rancherlabs/corral/pkg/vars"
 	"io"
 	"io/fs"
 	"net"
@@ -29,7 +30,7 @@ const (
 type Shell struct {
 	Node       corral.Node
 	PrivateKey []byte
-	Vars       map[string]string
+	Vars       vars.VarSet
 	Verbose    bool
 
 	stdin  chan []byte
@@ -259,7 +260,7 @@ func (s *Shell) connectStdout() {
 			vs := strings.TrimPrefix(text, corralSetVarCommand)
 			vs = strings.Trim(vs, " \t")
 
-			k, v := corral.ToVar(vs)
+			k, v := vars.ToVar(vs)
 			if k == "" {
 				logrus.Warnf("failed to parse corral command: %s", text)
 				continue
