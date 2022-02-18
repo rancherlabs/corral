@@ -2,6 +2,7 @@ package _package_test
 
 import (
 	"embed"
+	"github.com/rancherlabs/corral/pkg/vars"
 	"testing"
 
 	_package "github.com/rancherlabs/corral/pkg/package"
@@ -68,59 +69,59 @@ func TestValidateVarSet(t *testing.T) {
 	manifest, _ := _package.LoadManifest(_fs, "tests/valid.yaml")
 
 	{ // valid
-		vars := _package.VarSet{
+		vs := vars.VarSet{
 			"a": "aval",
 			"c": "cval",
 			"d": "true",
 		}
 
-		res := manifest.ValidateVarSet(vars, true)
+		res := manifest.ValidateVarSet(vs, true)
 
 		assert.NoError(t, res)
 	}
 
 	{ // read only
-		vars := _package.VarSet{
+		vs := vars.VarSet{
 			"a": "aval",
 			"b": "12",
 			"c": "cval",
 			"d": "true",
 		}
 
-		res := manifest.ValidateVarSet(vars, true)
+		res := manifest.ValidateVarSet(vs, true)
 
 		assert.Error(t, res)
 	}
 
 	{ // read only no write
-		vars := _package.VarSet{
+		vs := vars.VarSet{
 			"a": "aval",
 			"b": "12",
 			"c": "cval",
 			"d": "true",
 		}
 
-		res := manifest.ValidateVarSet(vars, false)
+		res := manifest.ValidateVarSet(vs, false)
 
 		assert.NoError(t, res)
 	}
 
 	{ // optional
-		vars := _package.VarSet{}
+		vs := vars.VarSet{}
 
-		res := manifest.ValidateVarSet(vars, true)
+		res := manifest.ValidateVarSet(vs, true)
 
 		assert.Error(t, res)
 	}
 
 	{ // schema
-		vars := _package.VarSet{
+		vs := vars.VarSet{
 			"a": "aval",
 			"b": "five",
 			"c": "cval",
 		}
 
-		res := manifest.ValidateVarSet(vars, true)
+		res := manifest.ValidateVarSet(vs, true)
 
 		assert.Error(t, res)
 	}
@@ -129,7 +130,7 @@ func TestValidateVarSet(t *testing.T) {
 func TestFilterVars(t *testing.T) {
 	manifest, _ := _package.LoadManifest(_fs, "tests/valid.yaml")
 
-	vars := _package.VarSet{
+	vs := vars.VarSet{
 		"a": "",
 		"b": "",
 		"c": "",
@@ -138,15 +139,15 @@ func TestFilterVars(t *testing.T) {
 		"f": "",
 	}
 
-	res := manifest.FilterVars(vars)
+	res := manifest.FilterVars(vs)
 
-	assert.Equal(t, res, _package.VarSet{"a": "", "b": "", "c": "", "d": "", "e": ""})
+	assert.Equal(t, res, vars.VarSet{"a": "", "b": "", "c": "", "d": "", "e": ""})
 }
 
 func TestFilterSensitiveVars(t *testing.T) {
 	manifest, _ := _package.LoadManifest(_fs, "tests/valid.yaml")
 
-	vars := _package.VarSet{
+	vs := vars.VarSet{
 		"a": "",
 		"b": "",
 		"c": "",
@@ -154,7 +155,7 @@ func TestFilterSensitiveVars(t *testing.T) {
 		"e": "",
 	}
 
-	res := manifest.FilterSensitiveVars(vars)
+	res := manifest.FilterSensitiveVars(vs)
 
-	assert.Equal(t, res, _package.VarSet{"a": "", "b": "", "d": "", "e": ""})
+	assert.Equal(t, res, vars.VarSet{"a": "", "b": "", "d": "", "e": ""})
 }

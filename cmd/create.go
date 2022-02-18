@@ -8,9 +8,9 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"encoding/pem"
+	"github.com/rancherlabs/corral/pkg/vars"
 	"os"
 	"path/filepath"
-	"strings"
 	"sync"
 	"time"
 
@@ -98,7 +98,7 @@ func create(_ *cobra.Command, args []string) {
 
 	// load cli variables
 	for _, raw := range cfgViper.GetStringSlice("variable") {
-		k, v := corral.ToVar(raw)
+		k, v := vars.ToVar(raw)
 		if k == "" {
 			logrus.Fatal("variables should be in the format <key>=<value>")
 		}
@@ -226,17 +226,9 @@ func create(_ *cobra.Command, args []string) {
 				corr.SetStatus(corral.StatusError)
 				logrus.Error("failed to parse corral node pools: ", err)
 			}
-			corr.Vars["corral_node_pools"] = string(v.Value)
-
-			continue
 		}
 
-		var buf bytes.Buffer
-		_ = json.Compact(&buf, v.Value)
-
-		corr.Vars[k] = buf.String()
-		corr.Vars[k] = strings.TrimPrefix(corr.Vars[k], "\"")
-		corr.Vars[k] = strings.TrimSuffix(corr.Vars[k], "\"")
+		corr.Vars[k] = vars.FromTerraformOutputMeta(v)
 	}
 
 	var nodes []corral.Node

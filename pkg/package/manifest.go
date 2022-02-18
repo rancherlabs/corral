@@ -3,6 +3,7 @@ package _package
 import (
 	_ "embed"
 	"fmt"
+	"github.com/rancherlabs/corral/pkg/vars"
 	"strings"
 
 	"bytes"
@@ -78,11 +79,11 @@ func LoadManifest(_fs fs.FS, path string) (Manifest, error) {
 	return manifest, err
 }
 
-func (m *Manifest) ApplyDefaultVars(vars VarSet) error {
+func (m *Manifest) ApplyDefaultVars(vs vars.VarSet) error {
 	for k, schema := range m.VariableSchemas {
 
-		if _, ok := vars[k]; !ok {
-			vars[k] = schema.Default
+		if _, ok := vs[k]; !ok {
+			vs[k] = schema.Default
 		}
 	}
 
@@ -104,20 +105,20 @@ func (m *Manifest) ValidateDefaults() error {
 }
 
 // ValidateVarSet returns an error if the var set does not match the manifest variable schemas.
-func (m *Manifest) ValidateVarSet(vars VarSet, write bool) error {
+func (m *Manifest) ValidateVarSet(vs vars.VarSet, write bool) error {
 	for k, schema := range m.VariableSchemas {
 		var parsedValue interface{}
 
-		if _, ok := vars[k]; schema.ReadOnly && write && ok {
+		if _, ok := vs[k]; schema.ReadOnly && write && ok {
 			return fmt.Errorf("[%s] may not be set", k)
 		}
 
-		if _, ok := vars[k]; !schema.Optional && !schema.ReadOnly && schema.Default == "" && !ok {
+		if _, ok := vs[k]; !schema.Optional && !schema.ReadOnly && schema.Default == "" && !ok {
 			return fmt.Errorf("[%s] is required", k)
 		}
 
-		if err := json.Unmarshal([]byte(vars[k]), &parsedValue); err != nil {
-			parsedValue = vars[k]
+		if err := json.Unmarshal([]byte(vs[k]), &parsedValue); err != nil {
+			parsedValue = vs[k]
 		}
 
 		if err := schema.Validate(parsedValue); err != nil && parsedValue != "" {
@@ -129,10 +130,10 @@ func (m *Manifest) ValidateVarSet(vars VarSet, write bool) error {
 }
 
 // FilterVars returns the given VarSet without any variables not defined in the manifest
-func (m *Manifest) FilterVars(vars VarSet) VarSet {
-	rval := VarSet{}
+func (m *Manifest) FilterVars(vs vars.VarSet) vars.VarSet {
+	rval := vars.VarSet{}
 
-	for k, v := range vars {
+	for k, v := range vs {
 		if _, ok := m.VariableSchemas[k]; !ok {
 			continue
 		}
@@ -144,10 +145,10 @@ func (m *Manifest) FilterVars(vars VarSet) VarSet {
 }
 
 // FilterSensitiveVars returns the given VarSet without any variables marked as sensitive in the manifest
-func (m *Manifest) FilterSensitiveVars(vars VarSet) VarSet {
-	rval := VarSet{}
+func (m *Manifest) FilterSensitiveVars(vs vars.VarSet) vars.VarSet {
+	rval := vars.VarSet{}
 
-	for k, v := range vars {
+	for k, v := range vs {
 		schema := m.VariableSchemas[k]
 
 		if schema.Sensitive {

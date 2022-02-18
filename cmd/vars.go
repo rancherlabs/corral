@@ -26,7 +26,7 @@ func NewCommandVars() *cobra.Command {
 		Use:   "vars NAME [VAR | [VAR...]]",
 		Short: "Show the given corral's variables.",
 		Long:  varsDescription,
-		Run:   vars,
+		Run:   listVars,
 		Args:  cobra.MinimumNArgs(1),
 	}
 
@@ -35,7 +35,7 @@ func NewCommandVars() *cobra.Command {
 	return cmd
 }
 
-func vars(cmd *cobra.Command, args []string) {
+func listVars(cmd *cobra.Command, args []string) {
 	corralName := args[0]
 
 	c, err := corral.Load(config.CorralPath(corralName))

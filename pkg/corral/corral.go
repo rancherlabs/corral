@@ -2,6 +2,7 @@ package corral
 
 import (
 	"errors"
+	"github.com/rancherlabs/corral/pkg/vars"
 	"os"
 	"path/filepath"
 
@@ -19,7 +20,7 @@ type Corral struct {
 	PrivateKey string `yaml:"private_key"`
 
 	NodePools map[string][]Node `yaml:"node_pools" json:"node_pools,omitempty"`
-	Vars      map[string]string `yaml:"vars" json:"vars,omitempty"`
+	Vars      vars.VarSet       `yaml:"vars" json:"vars,omitempty"`
 }
 
 func Load(path string) (*Corral, error) {
