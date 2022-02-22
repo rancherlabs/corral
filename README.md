@@ -138,7 +138,7 @@ provider "digitalocean" {
 }
 
 resource "digitalocean_ssh_key" "corral_key" {
-  name       = "corral-{var.corral_user_id}-{var.corral_name}"
+  name       = "corral-${var.corral_user_id}-${var.corral_name}"
   public_key = var.corral_public_key
 }
 
