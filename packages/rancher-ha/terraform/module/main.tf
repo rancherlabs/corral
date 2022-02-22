@@ -22,6 +22,6 @@ resource "random_id" "cluster_id" {
 }
 
 resource "digitalocean_ssh_key" "corral_key" {
-  name       = "corral-{var.corral_user_id}-${random_id.cluster_id.hex}"
+  name       = "corral-${var.corral_user_id}-${random_id.cluster_id.hex}"
   public_key = var.corral_public_key
 }
