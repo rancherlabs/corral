@@ -1,5 +1,5 @@
 package version
 
-const Version = "dev"
+var Version = "dev"
 
 const TerraformVersion = "1.0.11"
