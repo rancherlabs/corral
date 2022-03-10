@@ -20,6 +20,7 @@ func NewCommandPackage() *cobra.Command {
 		NewCommandPublish(),
 		NewCommandLogin(),
 		NewCommandInfo(),
-		NewCommandValidate())
+		NewCommandValidate(),
+		NewCommandDownload())
 	return cmd
 }

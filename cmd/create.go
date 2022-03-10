@@ -42,7 +42,7 @@ corral create k3s-custom /home/rancher/issue-1234
 
 func NewCommandCreate() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "create NAME [PACKAGE]",
+		Use:   "create NAME PACKAGE",
 		Short: "Create a new corral",
 		Long:  createDescription,
 		Args:  cobra.RangeArgs(1, 2),
