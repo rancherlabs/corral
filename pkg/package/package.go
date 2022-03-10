@@ -6,9 +6,9 @@ import (
 	"github.com/rancherlabs/corral/pkg/version"
 )
 
-const (
-	corralUserAgent = "Corral/" + version.Version
+var corralUserAgent = "Corral/" + version.Version
 
+const (
 	TerraformVersionAnnotation = "corral.cattle.io/terraform-version"
 	PublisherAnnotation        = "corral.cattle.io/published-by"
 	CorralVersionAnnotation    = "corral.cattle.io/corral-version"
