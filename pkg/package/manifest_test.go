@@ -25,6 +25,9 @@ func TestLoadManifest(t *testing.T) {
 		assert.Equal(t, res.Annotations["foo"], "bar")
 		assert.Equal(t, res.Annotations["baz"], "1")
 
+		assert.NotNil(t, res.Overlay)
+		assert.Equal(t, res.Annotations["foo"], "bar")
+
 		assert.Len(t, res.Commands, 1)
 		assert.Equal(t, "whoami", res.Commands[0].Command)
 

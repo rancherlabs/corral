@@ -34,7 +34,7 @@ func NewCommandDownload() *cobra.Command {
 func download(_ *cobra.Command, args []string) {
 	pkg, err := _package.LoadPackage(args[0])
 	if err != nil {
-		logrus.Fatal("failed to load package: %s", err)
+		logrus.Fatalf("failed to load package: %s", err)
 	}
 
 	dest := pkg.Name
