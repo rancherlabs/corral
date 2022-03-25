@@ -5,4 +5,5 @@ type Node struct {
 	User           string `yaml:"user,omitempty"`
 	Address        string `yaml:"address,omitempty"`
 	BastionAddress string `yaml:"bastion_address,omitempty"`
+	OverlayRoot    string `yaml:"overlay_root"`
 }

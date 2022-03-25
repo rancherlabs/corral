@@ -39,6 +39,6 @@ func (b Package) TerraformModulePath() string {
 	return filepath.Join(b.RootPath, "terraform", "module")
 }
 
-func (b *Package) ScriptPath() string {
-	return filepath.Join(b.RootPath, "scripts")
+func (b *Package) OverlayPath() string {
+	return filepath.Join(b.RootPath, "overlay")
 }

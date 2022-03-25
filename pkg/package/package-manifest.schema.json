@@ -18,6 +18,11 @@
       "type": "string",
       "description": "Describe the purpose of this package."
     },
+    "overlay": {
+      "type": "object",
+      "additionalProperties": {"type": "string"},
+      "description": "A map of node group name to overlay subpath."
+    },
     "commands": {
       "type": "array",
       "items": {

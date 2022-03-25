@@ -25,8 +25,8 @@ func validate(_ *cobra.Command, args []string) {
 		logrus.Fatal("Package manifest not found.")
 	}
 
-	if i, err := os.Stat(filepath.Join(args[0], "scripts")); err != nil || !i.IsDir() {
-		logrus.Fatal("Scripts folder not found.")
+	if i, err := os.Stat(filepath.Join(args[0], "overlay")); err != nil || !i.IsDir() {
+		logrus.Fatal("overlay folder not found.")
 	}
 
 	if i, err := os.Stat(filepath.Join(args[0], "terraform", "module")); err != nil || !i.IsDir() {

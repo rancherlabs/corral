@@ -36,7 +36,7 @@ func UploadPackage(pkg Package, ref string) error {
 		return err
 	}
 
-	if desc, err := addScriptsLayer(memoryStore, pkg); err == nil {
+	if desc, err := addOverlayLayer(memoryStore, pkg); err == nil {
 		contents = append(contents, desc)
 	} else {
 		return err
@@ -109,8 +109,8 @@ func addTerraformModuleLayer(memoryStore *content.Memory, pkg Package) (v1.Descr
 	return memoryStore.Add("", v1.MediaTypeImageLayerGzip, buf)
 }
 
-func addScriptsLayer(memoryStore *content.Memory, pkg Package) (v1.Descriptor, error) {
-	buf, err := compressPath("scripts", pkg.ScriptPath())
+func addOverlayLayer(memoryStore *content.Memory, pkg Package) (v1.Descriptor, error) {
+	buf, err := compressPath("overlay", pkg.OverlayPath())
 	if err != nil {
 		return v1.Descriptor{}, err
 	}

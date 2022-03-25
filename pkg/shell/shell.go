@@ -20,8 +20,7 @@ import (
 )
 
 const (
-	PackageScriptDestination = "/opt/corral"
-	connectionTimeout        = 5 * time.Second
+	connectionTimeout = 5 * time.Second
 
 	corralSetVarCommand     = "corral_set"
 	corralLogMessageCommand = "corral_log"
@@ -118,7 +117,11 @@ func (s *Shell) Connect() error {
 }
 
 func (s *Shell) UploadPackageFiles(pkg _package.Package) error {
-	src := pkg.ScriptPath() + string(os.PathSeparator)
+	src := pkg.OverlayPath()
+	if len(s.Node.OverlayRoot) > 0 {
+		src = filepath.Join(src, s.Node.OverlayRoot)
+	}
+
 	return filepath.Walk(src, func(path string, info fs.FileInfo, err error) error {
 		if err != nil {
 			return err
@@ -128,31 +131,26 @@ func (s *Shell) UploadPackageFiles(pkg _package.Package) error {
 			return nil
 		}
 
-		dir, fn := filepath.Split(strings.TrimPrefix(path, src))
-
-		err = s.sftpClient.MkdirAll(strings.ReplaceAll(filepath.Join(PackageScriptDestination, dir), string(os.PathSeparator), "/"))
-		if err != nil {
-			return err
-		}
+		dest := path[len(src):]
 
 		in, err := os.Open(path)
+		if err != nil {
+			return err
+		}
 		defer func() { _ = in.Close() }()
-		if err != nil {
-			return err
-		}
 
-		out, err := s.sftpClient.Create(strings.ReplaceAll(filepath.Join(PackageScriptDestination, dir, fn), string(os.PathSeparator), "/"))
-		defer func() { _ = out.Close() }()
+		out, err := s.sftpClient.Create(dest)
 		if err != nil {
 			return err
 		}
+		defer func() { _ = out.Close() }()
 
 		err = out.Chmod(0o700)
 		if err != nil {
 			return err
 		}
 
-		logrus.Debugf("copying %s to [%s]:%s", filepath.Join(PackageScriptDestination, dir), s.Node.Name, filepath.Join(PackageScriptDestination, dir, fn))
+		logrus.Debugf("copying %s to [%s]:%s", path, s.Node.Name, dest)
 
 		_, err = io.Copy(out, in)
 		if err != nil {
@@ -211,7 +209,7 @@ func (s *Shell) startSession() (err error) {
 	go s.connectStdout()
 
 	if s.Verbose {
-		go s.connectStdin()
+		go s.connectStderr()
 	}
 
 	err = s.session.Shell()
@@ -285,7 +283,7 @@ func (s *Shell) connectStderr() {
 		return
 	}
 
-	s.stderr = make(chan []byte, 10)
+	s.stderr = make(chan []byte, 0)
 	stderr, _ := s.session.StderrPipe()
 
 	scanner := bufio.NewScanner(stderr)

@@ -1,0 +1,22 @@
+name: overlay-filter
+description: >
+  A simple package for developing corral.
+overlay:
+  a: a
+  b: b
+commands:
+  - command: echo "corral_set afiles=\"$(ls /app)\""
+    node_pools:
+      - a
+  - command: echo "corral_set bfiles=\"$(ls /app)\""
+    node_pools:
+      - b
+variables:
+  afiles:
+    type: string
+    readOnly: true
+    description: "Files on a nodes."
+  bfiles:
+    type: string
+    readOnly: true
+    description: "Files on b nodes."

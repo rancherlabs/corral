@@ -6,7 +6,11 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"github.com/blang/semver"
+	"github.com/rancherlabs/corral/pkg/version"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
@@ -91,6 +95,14 @@ func loadRemotePackage(ref string) (pkg Package, err error) {
 		return
 	}
 
+	if ver, err := semver.Parse(manifest.Annotations[CorralVersionAnnotation]); err != nil {
+		if semver.MustParse(version.Version).Major > ver.Major {
+			return pkg, errors.New("packages must be published by the same major version of corral or later")
+		}
+	} else {
+		return pkg, errors.New("package does not have valid corral version annotation")
+	}
+
 	// create the destination directory
 	err = os.MkdirAll(dest, 0o700)
 	if err != nil {
@@ -110,7 +122,27 @@ func loadRemotePackage(ref string) (pkg Package, err error) {
 		}
 	}
 
-	return loadLocalPackage(dest)
+	pkg, err = loadLocalPackage(dest)
+	if err != nil {
+		return pkg, err
+	}
+
+	if pkg.Annotations[CorralVersionAnnotation] != "" {
+		pkv, err := semver.Parse(pkg.Annotations[CorralVersionAnnotation])
+		if err != nil {
+			logrus.Warningf("package has invalid version annotation: %s", pkg.Annotations[CorralVersionAnnotation])
+			return pkg, nil
+		}
+
+		if semver.MustParseRange("< 0.2.0-alpha0")(pkv) {
+			err = migrateScriptsToOverlay(pkg)
+			if err != nil {
+				return pkg, fmt.Errorf("failed to migrate scripts to overlay format: %w", err)
+			}
+		}
+	}
+
+	return pkg, nil
 }
 
 func extractLayer(dest string, r io.Reader) error {
@@ -162,4 +194,45 @@ func getRefPath(ref, digest string) string {
 	digest = strings.Split(digest, ":")[1]
 
 	return filepath.Join(append(strings.Split(ref, "/"), digest)...)
+}
+
+func migrateScriptsToOverlay(pkg Package) error {
+	scriptsPath := filepath.Join(pkg.RootPath, "scripts")
+	overlayPath := pkg.OverlayPath() + "/opt/corral"
+
+	return filepath.WalkDir(scriptsPath, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		dest := overlayPath + path[len(scriptsPath):]
+
+		if d.IsDir() {
+			err = os.Mkdir(dest, 0x700)
+			if err != nil {
+				return err
+			}
+
+			return nil
+		}
+
+		var srcFile *os.File
+		var destFile *os.File
+		srcFile, err = os.Open(path)
+		if err != nil {
+			return err
+		}
+
+		destFile, err = os.Create(dest)
+		if err != nil {
+			return err
+		}
+
+		_, err = io.Copy(destFile, srcFile)
+
+		_ = srcFile.Close()
+		_ = destFile.Close()
+
+		return err
+	})
 }
