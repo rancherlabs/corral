@@ -3,6 +3,8 @@ description: "valid description"
 annotations:
   foo: bar
   baz: "1"
+overlay:
+  foo: bastion
 commands:
   - node_pools:
       - foo

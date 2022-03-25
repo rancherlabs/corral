@@ -26,6 +26,7 @@ type Manifest struct {
 	Annotations     map[string]string `yaml:"annotations"`
 	Description     string            `yaml:"description"`
 	Commands        []Command         `yaml:"commands"`
+	Overlay         map[string]string `yaml:"overlay"`
 	VariableSchemas map[string]Schema `yaml:"-"`
 }
 
@@ -204,15 +205,15 @@ func toStringKeys(val interface{}) interface{} {
 // parseVariableSchema accepts a manifest yaml as bytes and parses the schema map. Assumes manifest is a valid manifest
 // and does not have any error handling!
 func parseVariableSchema(manifest []byte) map[string]Schema {
-	vars := struct {
+	_vars := struct {
 		VariableSchemas map[string]interface{} `yaml:"variables,omitempty"`
 	}{
 		VariableSchemas: map[string]interface{}{},
 	}
-	_ = yaml.Unmarshal(manifest, &vars)
+	_ = yaml.Unmarshal(manifest, &_vars)
 
 	rval := map[string]Schema{}
-	for k, v := range vars.VariableSchemas {
+	for k, v := range _vars.VariableSchemas {
 		var buf bytes.Buffer
 		var schema Schema
 

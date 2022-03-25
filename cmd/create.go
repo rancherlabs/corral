@@ -232,8 +232,16 @@ func create(_ *cobra.Command, args []string) {
 	}
 
 	var nodes []corral.Node
-	for _, ns := range corr.NodePools {
-		nodes = append(nodes, ns...)
+
+	seen := map[string]interface{}{}
+	for name, np := range corr.NodePools {
+		for _, n := range np {
+			if _, ok := seen[n.Address]; !ok {
+				n.OverlayRoot = pkg.Overlay[name]
+				nodes = append(nodes, n)
+				seen[n.Address] = nil
+			}
+		}
 	}
 
 	logrus.Info("copying package files to nodes")
