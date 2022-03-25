@@ -9,12 +9,16 @@ import (
 
 	"github.com/hashicorp/terraform-exec/tfexec"
 	"github.com/rancherlabs/corral/pkg/config"
-	"github.com/rancherlabs/corral/pkg/vars"
 	"github.com/rancherlabs/corral/pkg/version"
 
+	"io/ioutil"
+
 	"github.com/pkg/errors"
+
+	"github.com/rancherlabs/corral/pkg/vars"
+
 	"github.com/sirupsen/logrus"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 const nodePoolVarName = "corral_node_pools"
@@ -33,14 +37,12 @@ type Corral struct {
 }
 
 func Load(path string) (*Corral, error) {
-	f, err := os.Open(filepath.Join(path, "corral.yaml"))
-	defer func(f *os.File) { _ = f.Close() }(f)
+	var c Corral
+	b, err := ioutil.ReadFile(filepath.Join(path, "corral.yaml"))
 	if err != nil {
 		return nil, err
 	}
-
-	var c Corral
-	return &c, yaml.NewDecoder(f).Decode(&c)
+	return &c, yaml.Unmarshal(b, &c)
 }
 
 func (c *Corral) TerraformPath(name string) string {
@@ -94,7 +96,7 @@ func (c *Corral) SetStatus(status Status) {
 }
 
 func (c *Corral) ApplyModule(src, name string) error {
-	if err := os.Mkdir(c.TerraformPath(name), 0700); err != nil {
+	if err := os.MkdirAll(c.TerraformPath(name), 0700); err != nil {
 		return err
 	}
 

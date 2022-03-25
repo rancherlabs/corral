@@ -12,26 +12,28 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rancherlabs/corral/pkg/vars"
 	"github.com/santhosh-tekuri/jsonschema/v5"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 type Command struct {
 	// shell fields
-	NodePoolNames []string `yaml:"node_pools"`
-	Command       string   `yaml:"command"`
+	Command       string   `yaml:"command,omitempty"`
+	NodePoolNames []string `yaml:"node_pools,omitempty"`
 
 	// terraform module fields
-	Module      string `yaml:"module"`
-	SkipCleanup bool   `yaml:"skip_cleanup"`
+	Module      string `yaml:"module,omitempty"`
+	SkipCleanup bool   `yaml:"skip_cleanup,omitempty"`
 }
+
+type VariableSchemas map[string]Schema
 
 type Manifest struct {
 	Name            string            `yaml:"name"`
-	Annotations     map[string]string `yaml:"annotations"`
-	Description     string            `yaml:"description"`
+	Annotations     map[string]string `yaml:"annotations,omitempty"`
+	Description     string            `yaml:"description,omitempty"`
 	Commands        []Command         `yaml:"commands"`
-	Overlay         map[string]string `yaml:"overlay"`
-	VariableSchemas map[string]Schema `yaml:"-"`
+	Overlay         map[string]string `yaml:"overlay,omitempty"`
+	VariableSchemas VariableSchemas   `yaml:"variables,omitempty"`
 }
 
 //go:embed package-manifest.schema.json
@@ -65,7 +67,7 @@ func LoadManifest(_fs fs.FS, path string) (Manifest, error) {
 	}
 	_ = f.Close()
 
-	err = validateManifest(buf)
+	err = ValidateManifest(buf)
 	if err != nil {
 		return manifest, err
 	}
@@ -74,8 +76,6 @@ func LoadManifest(_fs fs.FS, path string) (Manifest, error) {
 	if err != nil {
 		return manifest, err
 	}
-
-	manifest.VariableSchemas = parseVariableSchema(buf)
 
 	if manifest.Annotations == nil {
 		manifest.Annotations = map[string]string{}
@@ -86,7 +86,6 @@ func LoadManifest(_fs fs.FS, path string) (Manifest, error) {
 
 func (m *Manifest) ApplyDefaultVars(vs vars.VarSet) error {
 	for k, schema := range m.VariableSchemas {
-
 		if _, ok := vs[k]; !ok {
 			vs[k] = schema.Default
 		}
@@ -174,8 +173,8 @@ func (m *Manifest) GetAnnotation(key string) string {
 	return ""
 }
 
-// validateManifest returns an error of the manifest violates any rules defined in the package-manifest.schema.json
-func validateManifest(manifest []byte) error {
+// ValidateManifest returns an error of the manifest violates any rules defined in the package-manifest.schema.json
+func ValidateManifest(manifest []byte) error {
 	var yml interface{}
 
 	_ = yaml.Unmarshal(manifest, &yml)
@@ -206,17 +205,18 @@ func toStringKeys(val interface{}) interface{} {
 	}
 }
 
-// parseVariableSchema accepts a manifest yaml as bytes and parses the schema map. Assumes manifest is a valid manifest
-// and does not have any error handling!
-func parseVariableSchema(manifest []byte) map[string]Schema {
+func (s *VariableSchemas) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	*s = VariableSchemas{}
 	_vars := struct {
-		VariableSchemas map[string]interface{} `yaml:"variables,omitempty"`
+		VariableSchemas map[string]interface{} `yaml:"variables,inline,omitempty"`
 	}{
 		VariableSchemas: map[string]interface{}{},
 	}
-	_ = yaml.Unmarshal(manifest, &_vars)
+	err := unmarshal(&_vars)
+	if err != nil {
+		return err
+	}
 
-	rval := map[string]Schema{}
 	for k, v := range _vars.VariableSchemas {
 		var buf bytes.Buffer
 		var schema Schema
@@ -226,7 +226,7 @@ func parseVariableSchema(manifest []byte) map[string]Schema {
 		schema.Schema = schemaCompiler.MustCompile(k)
 		schema.Location = k
 
-		if vv, ok := v.(map[interface{}]interface{}); ok {
+		if vv, ok := v.(map[string]interface{}); ok {
 			if val, okk := vv["sensitive"].(bool); okk && val {
 				schema.Sensitive = true
 			}
@@ -252,8 +252,8 @@ func parseVariableSchema(manifest []byte) map[string]Schema {
 			}
 		}
 
-		rval[k] = schema
+		(*s)[k] = schema
 	}
 
-	return rval
+	return nil
 }

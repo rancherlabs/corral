@@ -1,0 +1,27 @@
+name: simple-test
+description: |
+    A simple template example. This package was generated with the following command: `corral package template -f config.yaml simple-test`
+commands:
+    - module: simple/module
+    - command: /app/setvar1.sh
+      node_pools:
+        - all
+    - command: ls /app
+      node_pools:
+        - all
+    - command: /app/setvar2.sh
+      node_pools:
+        - all
+variables:
+    var1:
+        default: foo
+        description: Example variable for testing variable flows.
+        type: string
+    var1_out:
+        description: Set to the value of var1 by a corral set script.
+        readOnly: true
+        type: string
+    var2_out:
+        description: Set to the value of var1_out by a corral set script.
+        readOnly: true
+        type: string
