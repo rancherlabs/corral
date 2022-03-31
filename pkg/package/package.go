@@ -35,8 +35,8 @@ func (b Package) ManifestPath() string {
 	return filepath.Join(b.RootPath, "manifest.yaml")
 }
 
-func (b Package) TerraformModulePath() string {
-	return filepath.Join(b.RootPath, "terraform", "module")
+func (b Package) TerraformModulePath(name string) string {
+	return filepath.Join(b.RootPath, "terraform", name)
 }
 
 func (b *Package) OverlayPath() string {

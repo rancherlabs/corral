@@ -105,5 +105,12 @@ func NewTerraform(modulePath, version string) (*tfexec.Terraform, error) {
 		return nil, err
 	}
 
-	return tfexec.NewTerraform(modulePath, tfPath)
+	tf, err := tfexec.NewTerraform(modulePath, tfPath)
+
+	if logrus.GetLevel() == logrus.DebugLevel {
+		tf.SetStdout(os.Stdout)
+		tf.SetStderr(os.Stderr)
+	}
+
+	return tf, err
 }

@@ -25,8 +25,12 @@
     },
     "commands": {
       "type": "array",
+      "additionalProperties": false,
       "items": {
-        "$ref": "#/definitions/command"
+        "oneOf": [
+          { "$ref": "#/definitions/command" },
+          { "$ref": "#/definitions/module" }
+        ]
       }
     },
     "variables": {
@@ -52,6 +56,21 @@
           "items": {
             "type": "string"
           }
+        }
+      }
+    },
+    "module": {
+      "type": "object",
+      "required": ["module"],
+      "properties": {
+        "module": {
+          "type": "string",
+          "description": "Name of the terraform module."
+        },
+        "skip_cleanup": {
+          "type": "boolean",
+          "default": false,
+          "description": "Do not run terraform destroy when cleaning up a corral."
         }
       }
     },

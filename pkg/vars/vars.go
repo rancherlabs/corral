@@ -3,8 +3,10 @@ package vars
 import (
 	"bytes"
 	"encoding/json"
-	"github.com/hashicorp/terraform-exec/tfexec"
+	"io"
 	"strings"
+
+	"github.com/hashicorp/terraform-exec/tfexec"
 )
 
 const quote = byte('"')
@@ -22,7 +24,6 @@ func ToVar(in string) (key, value string) {
 // FromTerraformOutputMeta returns strings as they are and properly escapes json objects
 func FromTerraformOutputMeta(in tfexec.OutputMeta) string {
 	var buf bytes.Buffer
-	var rval string
 	raw, _ := in.Value.MarshalJSON()
 
 	// if this is a json string get the raw value
@@ -32,20 +33,24 @@ func FromTerraformOutputMeta(in tfexec.OutputMeta) string {
 
 		// attempt to compact the json and escape it
 	} else if json.Compact(&buf, raw) == nil {
-		for {
-			c, err := buf.ReadByte()
-			if err != nil {
-				return rval
-			}
-
-			if c == quote {
-				rval += `\`
-			}
-
-			rval += string(c)
-		}
+		return Escape(&buf)
 	}
 
 	// default to returning the raw value
 	return string(raw)
+}
+
+func Escape(in io.ByteReader) (out string) {
+	for {
+		c, err := in.ReadByte()
+		if err != nil {
+			return
+		}
+
+		if c == quote {
+			out += `\`
+		}
+
+		out += string(c)
+	}
 }

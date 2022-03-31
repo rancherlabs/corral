@@ -19,6 +19,7 @@ Examples:
 corral vars k3s
 corral vars k3s kube_api_host node_token
 corral vars k3s kubeconfig | base64 --decode > ~/.kube/config
+corral vars k3s -a
 `
 
 func NewCommandVars() *cobra.Command {
@@ -31,6 +32,7 @@ func NewCommandVars() *cobra.Command {
 	}
 
 	cmd.Flags().Bool("sensitive", false, "Sensitive values will be displayed if this flag is true.")
+	cmd.Flags().BoolP("all", "a", false, "All values will be displayed if this flag is true.")
 
 	return cmd
 }
@@ -56,8 +58,8 @@ func listVars(cmd *cobra.Command, args []string) {
 
 	vs := c.Vars
 
-	if !debug {
-		vs = pkg.FilterVars(c.Vars)
+	if all, _ := cmd.Flags().GetBool("all"); !all {
+		vs = pkg.FilterVars(vs)
 	}
 
 	if sensitive, _ := cmd.Flags().GetBool("sensitive"); !sensitive {

@@ -6,8 +6,11 @@ annotations:
 overlay:
   foo: bastion
 commands:
+  - module: module
+    skip_cleanup: true
   - node_pools:
       - foo
+      - bar
     command: whoami
 variables:
   a:

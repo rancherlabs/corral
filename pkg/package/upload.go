@@ -10,7 +10,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/opencontainers/image-spec/specs-go/v1"
+	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/sirupsen/logrus"
 	"oras.land/oras-go/pkg/content"
 	"oras.land/oras-go/pkg/oras"
@@ -30,8 +30,8 @@ func UploadPackage(pkg Package, ref string) error {
 		return err
 	}
 
-	if desc, err := addTerraformModuleLayer(memoryStore, pkg); err == nil {
-		contents = append(contents, desc)
+	if ds, err := addTerraformModuleLayers(memoryStore, pkg); err == nil {
+		contents = append(contents, ds...)
 	} else {
 		return err
 	}
@@ -100,13 +100,27 @@ func addManifestLayer(memoryStore *content.Memory, pkg Package) (v1.Descriptor, 
 	return memoryStore.Add("", v1.MediaTypeImageLayerGzip, buf.Bytes())
 }
 
-func addTerraformModuleLayer(memoryStore *content.Memory, pkg Package) (v1.Descriptor, error) {
-	buf, err := compressPath("terraform/module", pkg.TerraformModulePath())
-	if err != nil {
-		return v1.Descriptor{}, err
+func addTerraformModuleLayers(memoryStore *content.Memory, pkg Package) ([]v1.Descriptor, error) {
+	var ds []v1.Descriptor
+
+	var desc v1.Descriptor
+	for _, cmd := range pkg.Commands {
+		if cmd.Module != "" {
+			buf, err := compressPath(filepath.Join("terraform", cmd.Module), pkg.TerraformModulePath(cmd.Module))
+			if err != nil {
+				return nil, err
+			}
+
+			desc, err = memoryStore.Add("", v1.MediaTypeImageLayerGzip, buf)
+			if err != nil {
+				return nil, err
+			}
+
+			ds = append(ds, desc)
+		}
 	}
 
-	return memoryStore.Add("", v1.MediaTypeImageLayerGzip, buf)
+	return ds, nil
 }
 
 func addOverlayLayer(memoryStore *content.Memory, pkg Package) (v1.Descriptor, error) {

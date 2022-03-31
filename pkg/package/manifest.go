@@ -1,24 +1,28 @@
 package _package
 
 import (
-	_ "embed"
-	"fmt"
-	"github.com/rancherlabs/corral/pkg/vars"
-	"strings"
-
 	"bytes"
+	_ "embed"
 	"encoding/json"
+	"fmt"
 	"io"
 	"io/fs"
+	"strings"
 
 	"github.com/pkg/errors"
+	"github.com/rancherlabs/corral/pkg/vars"
 	"github.com/santhosh-tekuri/jsonschema/v5"
 	"gopkg.in/yaml.v2"
 )
 
 type Command struct {
+	// shell fields
 	NodePoolNames []string `yaml:"node_pools"`
 	Command       string   `yaml:"command"`
+
+	// terraform module fields
+	Module      string `yaml:"module"`
+	SkipCleanup bool   `yaml:"skip_cleanup"`
 }
 
 type Manifest struct {

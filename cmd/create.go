@@ -2,19 +2,15 @@ package cmd
 
 import (
 	"bytes"
-	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/x509"
-	"encoding/json"
 	"encoding/pem"
 	"github.com/rancherlabs/corral/pkg/vars"
 	"os"
-	"path/filepath"
 	"sync"
 	"time"
 
-	"github.com/hashicorp/terraform-exec/tfexec"
 	"github.com/rancherlabs/corral/pkg/config"
 	"github.com/rancherlabs/corral/pkg/corral"
 	_package "github.com/rancherlabs/corral/pkg/package"
@@ -60,9 +56,6 @@ func NewCommandCreate() *cobra.Command {
 	}
 
 	cmd.Flags().String("config", "", "loadManifest flags for this command from a file.")
-
-	cmd.Flags().Bool("dry-run", false, "Display what resources this corral will create.")
-	_ = cfgViper.BindPFlag("dry-run", cmd.Flags().Lookup("dry-run"))
 
 	cmd.Flags().StringArrayP("variable", "v", []string{}, "Set a variable to configure the package.")
 	_ = cfgViper.BindPFlag("variable", cmd.Flags().Lookup("variable"))
@@ -115,6 +108,9 @@ func create(_ *cobra.Command, args []string) {
 		logrus.Fatalf("failed to load package: %s", err)
 	}
 
+	// update the corral ref to the absolute path
+	corr.Source = pkg.RootPath
+
 	// validate the variables
 	err = pkg.ValidateVarSet(corr.Vars, true)
 	if err != nil {
@@ -142,136 +138,83 @@ func create(_ *cobra.Command, args []string) {
 	corr.Vars["corral_user_public_key"] = string(userPublicKey)
 	corr.Vars["corral_public_key"] = corr.PublicKey
 	corr.Vars["corral_private_key"] = corr.PrivateKey
-
-	// start a new tf instance in our corral's terraform path
-	_ = corr.Save()
-	tf, err := config.NewTerraform(corr.TerraformPath(), pkg.TerraformVersion())
-	if err != nil {
-		logrus.Fatal("failed to get load terraform: ", err)
-	}
-
-	defer func() {
-		if corr.Status < corral.StatusReady {
-			if corr.Status > corral.StatusNew {
-				logrus.Info("cleaning up failed corral")
-				err = tf.Destroy(context.Background())
-				if err != nil {
-					logrus.Error("failed to cleanup failed corral: ", err)
-					corr.SetStatus(corral.StatusError)
-					return
-				}
-			}
-
-			_ = corr.Delete()
-		}
-	}()
-
-	if debug || cfgViper.GetBool("dry-run") {
-		tf.SetStdout(os.Stdout)
-	}
-
-	logrus.Info("initializing terraform module")
-	err = tf.Init(context.Background(),
-		tfexec.Upgrade(false),
-		tfexec.FromModule(pkg.TerraformModulePath()))
-	if err != nil {
-		logrus.Error(err)
-		return
-	}
-
-	// write the tf vars file
-	f, err := os.Create(filepath.Join(corr.TerraformPath(), "terraform.tfvars.json"))
-	if err != nil {
-		logrus.Error(err)
-	}
-	_ = json.NewEncoder(f).Encode(corr.Vars)
-	defer func() { _ = f.Close() }()
-
-	// if this is a dry run just plan and exit
-	if cfgViper.GetBool("dry-run") {
-		_, err = tf.Plan(context.Background())
-		if err != nil {
-			logrus.Error("error calling plan: ", err)
-		}
-
-		// because this is a dry run we can delete the corral
-		_ = corr.Delete()
-
-		return
-	}
+	corr.Vars["corral_node_pools"] = ""
 
 	// write the corral to disk
 	corr.SetStatus(corral.StatusProvisioning)
 
-	logrus.Info("applying terraform module")
-	err = tf.Apply(context.Background())
-	if err != nil {
-		logrus.Error("failed to apply package terraform modules: ", err)
-		corr.SetStatus(corral.StatusError)
-		return
-	}
+	var lastCommand int
+	knownAddresses := map[string]struct{}{}
+	for i, cmd := range pkg.Manifest.Commands {
+		lastCommand = i
 
-	logrus.Info("reading terraform output")
-	tfOutput, err := tf.Output(context.Background())
-	if err != nil {
-		logrus.Fatal("failed to load outputs from terraform: ", err)
-		corr.SetStatus(corral.StatusError)
-		return
-	}
-
-	for k, v := range tfOutput {
-		if k == "corral_node_pools" {
-			err = json.Unmarshal(v.Value, &corr.NodePools)
-			if err != nil {
-				corr.SetStatus(corral.StatusError)
-				logrus.Error("failed to parse corral node pools: ", err)
-			}
+		if cmd.Module != "" {
+			logrus.Infof("[%d/%d] applying %s module", i+1, len(pkg.Manifest.Commands), cmd.Module)
+			err = corr.ApplyModule(pkg.TerraformModulePath(cmd.Module), cmd.Module)
 		}
 
-		corr.Vars[k] = vars.FromTerraformOutputMeta(v)
-	}
-
-	var nodes []corral.Node
-
-	seen := map[string]interface{}{}
-	for name, np := range corr.NodePools {
-		for _, n := range np {
-			if _, ok := seen[n.Address]; !ok {
-				n.OverlayRoot = pkg.Overlay[name]
-				nodes = append(nodes, n)
-				seen[n.Address] = nil
-			}
+		if cmd.Command != "" {
+			logrus.Infof("[%d/%d] running command %s", i+1, len(pkg.Manifest.Commands), cmd.Command)
+			err = executeShellCommand(cmd.Command, distinctNodes(corr.NodePools, cmd.NodePoolNames...), corr.PrivateKey, corr.Vars)
 		}
-	}
 
-	logrus.Info("copying package files to nodes")
-	err = copyPackageFiles(nodes, &corr, pkg)
-	if err != nil {
-		corr.SetStatus(corral.StatusError)
-		logrus.Error("failed to copy package files: ", err)
-		return
-	}
-
-	for _, pkgCmd := range pkg.Commands {
-		logrus.Infof("running command [%s]", pkgCmd.Command)
-
-		err := executeCommand(pkgCmd, &corr)
 		if err != nil {
 			corr.SetStatus(corral.StatusError)
-			logrus.Error("failed to execute command: ", err)
+			logrus.Error(err)
+			break
+		}
+
+		// collect new nodes
+		var nodes []corral.Node
+		for name, np := range corr.NodePools {
+			for _, n := range np {
+				if _, ok := knownAddresses[n.Address]; !ok {
+					n.OverlayRoot = pkg.Overlay[name]
+					nodes = append(nodes, n)
+					knownAddresses[n.Address] = knownAddresses[n.Address]
+				}
+			}
+		}
+
+		// copy package files to new nodes
+		err = copyPackageFiles(nodes, corr.PrivateKey, pkg)
+		if err != nil {
+			corr.SetStatus(corral.StatusError)
+			logrus.Error("failed to copy package files: ", err)
 			return
 		}
+
+		_ = corr.Save()
+
 	}
 
+	if corr.Status == corral.StatusError {
+		logrus.Info("attempting to roll back corral")
+		for i := lastCommand; i >= 0; i-- {
+			if pkg.Commands[i].Module != "" {
+				if pkg.Commands[i].SkipCleanup {
+					continue
+				}
+
+				logrus.Infof("rolling back %s module", pkg.Commands[i].Module)
+				if err = corr.DestroyModule(pkg.Commands[i].Module); err != nil {
+					logrus.Fatalf("failed to cleanup module [%s]: %v", pkg.Commands[i].Module, err)
+				}
+			}
+		}
+
+		_ = corr.Delete()
+	}
+
+	logrus.Info("done!")
 	corr.SetStatus(corral.StatusReady)
 }
 
-func newShell(node corral.Node, c *corral.Corral) (*shell.Shell, error) {
+func newShell(node corral.Node, privateKey string, vs vars.VarSet) (*shell.Shell, error) {
 	sh := &shell.Shell{
 		Node:       node,
-		PrivateKey: []byte(c.PrivateKey),
-		Vars:       c.Vars,
-		Verbose:    debug,
+		PrivateKey: []byte(privateKey),
+		Vars:       vs,
 	}
 
 	err := sh.Connect()
@@ -283,17 +226,16 @@ func newShell(node corral.Node, c *corral.Corral) (*shell.Shell, error) {
 	return sh, nil
 }
 
-func copyPackageFiles(nodes []corral.Node, c *corral.Corral, pkg _package.Package) error {
+func copyPackageFiles(nodes []corral.Node, privateKey string, pkg _package.Package) error {
 	var wg errgroup.Group
 	for _, n := range nodes {
 		n := n
-		c := c
 		wg.Go(func() error {
 			var sh *shell.Shell
 			var err error
 
 			err = wait.Poll(time.Second, 2*time.Minute, func() (done bool, err error) {
-				sh, err = newShell(n, c)
+				sh, err = newShell(n, privateKey, nil)
 				return err == nil, nil
 			})
 			if err != nil {
@@ -310,38 +252,30 @@ func copyPackageFiles(nodes []corral.Node, c *corral.Corral, pkg _package.Packag
 	return wg.Wait()
 }
 
-func executeCommand(pkgCmd _package.Command, c *corral.Corral) error {
-	nodes := map[string]corral.Node{}
-	for _, np := range pkgCmd.NodePoolNames {
-		// if the nodepool does not exist skip it
-		if _, ok := c.NodePools[np]; !ok {
-			continue
-		}
-
-		// accumulate unique nodes
-		for _, n := range c.NodePools[np] {
-			nodes[n.Name] = n
-		}
-	}
-
+func executeShellCommand(command string, nodes []corral.Node, privateKey string, vs vars.VarSet) error {
 	var mu sync.Mutex
 	var wg errgroup.Group
 	for _, n := range nodes {
 		n := n
-		c := c
+
+		lvs := make(vars.VarSet)
+		for k, v := range vs {
+			lvs[k] = v
+		}
+
 		wg.Go(func() error {
 			var sh *shell.Shell
 			var err error
 
 			err = wait.Poll(time.Second, 2*time.Minute, func() (done bool, err error) {
-				sh, err = newShell(n, c)
+				sh, err = newShell(n, privateKey, lvs)
 				return err == nil, nil
 			})
 			if err != nil {
 				return err
 			}
 
-			sh.Run(pkgCmd.Command)
+			sh.Run(command)
 
 			err = sh.Close()
 			if err != nil {
@@ -350,7 +284,7 @@ func executeCommand(pkgCmd _package.Command, c *corral.Corral) error {
 
 			mu.Lock()
 			for k, v := range sh.Vars {
-				c.Vars[k] = v
+				vs[k] = v
 			}
 			mu.Unlock()
 
@@ -396,4 +330,21 @@ func encodePrivateKeyToPEM(key *rsa.PrivateKey) []byte {
 	}
 
 	return pem.EncodeToMemory(&privBlock)
+}
+
+func distinctNodes(nodePools map[string][]corral.Node, poolNames ...string) (nodes []corral.Node) {
+	seen := map[string]struct{}{}
+
+	for _, name := range poolNames {
+		if np := nodePools[name]; np != nil {
+			for _, n := range np {
+				if _, ok := seen[n.Address]; !ok {
+					seen[n.Address] = seen[n.Address]
+					nodes = append(nodes, n)
+				}
+			}
+		}
+	}
+
+	return nodes
 }

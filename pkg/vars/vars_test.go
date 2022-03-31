@@ -1,8 +1,9 @@
 package vars
 
 import (
-	"github.com/hashicorp/terraform-exec/tfexec"
 	"testing"
+
+	"github.com/hashicorp/terraform-exec/tfexec"
 )
 
 func TestToVar(t *testing.T) {
