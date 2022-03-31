@@ -30,7 +30,6 @@ type Shell struct {
 	Node       corral.Node
 	PrivateKey []byte
 	Vars       vars.VarSet
-	Verbose    bool
 
 	stdin  chan []byte
 	stdout chan []byte
@@ -127,11 +126,15 @@ func (s *Shell) UploadPackageFiles(pkg _package.Package) error {
 			return err
 		}
 
-		if info.IsDir() {
+		dest := path[len(src):]
+
+		if dest == "" {
 			return nil
 		}
 
-		dest := path[len(src):]
+		if info.IsDir() {
+			return s.sftpClient.MkdirAll(dest)
+		}
 
 		in, err := os.Open(path)
 		if err != nil {
@@ -207,10 +210,7 @@ func (s *Shell) startSession() (err error) {
 
 	go s.connectStdin()
 	go s.connectStdout()
-
-	if s.Verbose {
-		go s.connectStderr()
-	}
+	go s.connectStderr()
 
 	err = s.session.Shell()
 	if err != nil {
@@ -272,9 +272,7 @@ func (s *Shell) connectStdout() {
 			logrus.Info(vs)
 		}
 
-		if s.Verbose {
-			fmt.Printf("[%s]: %s\n", s.Node.Address, scanner.Text())
-		}
+		logrus.Debugf("[%s]: %s", s.Node.Address, scanner.Text())
 	}
 }
 
@@ -289,6 +287,6 @@ func (s *Shell) connectStderr() {
 	scanner := bufio.NewScanner(stderr)
 
 	for scanner.Scan() {
-		fmt.Printf("[%s]: %s\n", s.Node.Address, scanner.Text())
+		logrus.Debugf("[%s]: %s", s.Node.Address, scanner.Text())
 	}
 }

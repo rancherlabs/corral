@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"context"
 	"errors"
 	"os"
 
@@ -46,30 +45,27 @@ func deleteCorral(cmd *cobra.Command, args []string) {
 		c.SetStatus(corral.StatusDeleting)
 
 		if skip, _ := cmd.Flags().GetBool("skip-cleanup"); !skip {
-			logrus.Infof("running terraform destroy for [%s]", name)
+			logrus.Infof("cleaning up corral: %s", name)
 			pkg, err := _package.LoadPackage(c.Source)
 			if err != nil {
 				logrus.Error("could not load package associated with corral: ", err)
 			}
 
-			tf, err := config.NewTerraform(c.TerraformPath(), pkg.TerraformVersion())
-			if err != nil {
-				logrus.Fatal("failed to load terraform: ", err)
-			}
-			if debug {
-				tf.SetStdout(os.Stdout)
-			}
+			for i := len(pkg.Commands) - 1; i >= 0; i-- {
+				if pkg.Commands[i].Module != "" {
+					if pkg.Commands[i].SkipCleanup {
+						continue
+					}
 
-			err = tf.Destroy(context.Background())
-			if err != nil {
-				logrus.Errorf("failed to cleanup corral resources [%s]: %s", c.Name, err)
-				continue
+					logrus.Infof("destroying module: %s", pkg.Commands[i].Module)
+					if err = c.DestroyModule(pkg.Commands[i].Module); err != nil {
+						logrus.Errorf("failed to cleanup module [%s]: %v", pkg.Commands[i].Module, err)
+						continue
+					}
+				}
 			}
 		}
 
 		err = c.Delete()
-		if err != nil {
-			logrus.Errorf("failed to cleanup corral [%s]: %s", c.Name, err)
-		}
 	}
 }

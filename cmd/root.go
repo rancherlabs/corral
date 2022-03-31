@@ -7,9 +7,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var debug bool
-
 func Execute() {
+	var debug bool
+
 	rootCmd := &cobra.Command{
 		Use:   "corral",
 		Short: "Corral is a CLI tool for creating and packaging reproducible development environments.",

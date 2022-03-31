@@ -100,7 +100,7 @@ func loadRemotePackage(ref string) (pkg Package, err error) {
 			return pkg, errors.New("packages must be published by the same major version of corral or later")
 		}
 	} else {
-		return pkg, errors.New("package does not have valid corral version annotation")
+		logrus.Warn("package does not have valid corral version annotation")
 	}
 
 	// create the destination directory

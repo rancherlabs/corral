@@ -2,10 +2,10 @@ package _package_test
 
 import (
 	"embed"
-	"github.com/rancherlabs/corral/pkg/vars"
 	"testing"
 
 	_package "github.com/rancherlabs/corral/pkg/package"
+	"github.com/rancherlabs/corral/pkg/vars"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -28,11 +28,13 @@ func TestLoadManifest(t *testing.T) {
 		assert.NotNil(t, res.Overlay)
 		assert.Equal(t, res.Annotations["foo"], "bar")
 
-		assert.Len(t, res.Commands, 1)
-		assert.Equal(t, "whoami", res.Commands[0].Command)
+		assert.Len(t, res.Commands, 2)
+		assert.Equal(t, "module", res.Commands[0].Module)
+		assert.True(t, res.Commands[0].SkipCleanup)
 
-		assert.Len(t, res.Commands[0].NodePoolNames, 1)
-		assert.Equal(t, "foo", res.Commands[0].NodePoolNames[0])
+		assert.Len(t, res.Commands[1].NodePoolNames, 2)
+		assert.Equal(t, "foo", res.Commands[1].NodePoolNames[0])
+		assert.Equal(t, "whoami", res.Commands[1].Command)
 
 		assert.Len(t, res.VariableSchemas, 5)
 

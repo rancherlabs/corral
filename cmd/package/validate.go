@@ -1,12 +1,10 @@
 package cmd_package
 
 import (
-	"os"
-	"path/filepath"
-
 	_package "github.com/rancherlabs/corral/pkg/package"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
+	"os"
 )
 
 func NewCommandValidate() *cobra.Command {
@@ -21,21 +19,21 @@ func NewCommandValidate() *cobra.Command {
 }
 
 func validate(_ *cobra.Command, args []string) {
-	if i, err := os.Stat(filepath.Join(args[0], "manifest.yaml")); err != nil || i.IsDir() {
-		logrus.Fatal("Package manifest not found.")
-	}
-
-	if i, err := os.Stat(filepath.Join(args[0], "overlay")); err != nil || !i.IsDir() {
-		logrus.Fatal("overlay folder not found.")
-	}
-
-	if i, err := os.Stat(filepath.Join(args[0], "terraform", "module")); err != nil || !i.IsDir() {
-		logrus.Fatal("Terraform module not found.")
-	}
-
 	pkg, err := _package.LoadPackage(args[0])
 	if err != nil {
 		logrus.Fatal(err)
+	}
+
+	if i, err := os.Stat(pkg.OverlayPath()); err != nil || !i.IsDir() {
+		logrus.Fatal("overlay folder not found.")
+	}
+
+	for _, cmd := range pkg.Commands {
+		if cmd.Module != "" {
+			if i, err := os.Stat(pkg.TerraformModulePath(cmd.Module)); err != nil || !i.IsDir() {
+				logrus.Fatalf("Terraform module [%s] not found.", cmd.Module)
+			}
+		}
 	}
 
 	err = pkg.ValidateDefaults()

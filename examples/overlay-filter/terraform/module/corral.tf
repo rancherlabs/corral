@@ -1,6 +1,4 @@
 variable "corral_name" {}
-variable "corral_user_id" {}
-variable "corral_user_public_key" {}
 variable "corral_public_key" {}
 
 output "corral_node_pools" {

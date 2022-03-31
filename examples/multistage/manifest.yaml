@@ -2,10 +2,11 @@ name: simple
 description: >
   A simple package for developing corral.
 commands:
-  - module: module
-  - command: /app/setvar1.sh
+  - module: first
+  - command: ls /app
     node_pools:
       - all
+  - module: second
   - command: ls /app
     node_pools:
       - all

@@ -2,6 +2,7 @@ name: k3s
 description: >
   A single node k3s cluster on Digitalocean.
 commands:
+  - module: module
   - command: /opt/corral/preflight.sh
     node_pools:
       - init
