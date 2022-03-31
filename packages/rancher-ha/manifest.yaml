@@ -25,6 +25,7 @@ variables:
     type: string
     description: "Host of newly created rancher instance."
 commands:
+  - module: module
   - command: /opt/corral/preflight.sh
     node_pools:
       - init
