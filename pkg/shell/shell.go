@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/pkg/sftp"
@@ -31,15 +32,10 @@ type Shell struct {
 	PrivateKey []byte
 	Vars       vars.VarSet
 
-	stdin  chan []byte
-	stdout chan []byte
-	stderr chan []byte
-
 	sftpClient    *sftp.Client
 	bastionClient *ssh.Client
 	client        *ssh.Client
 	connection    net.Conn
-	session       *ssh.Session
 }
 
 func (s *Shell) Connect() error {
@@ -106,12 +102,6 @@ func (s *Shell) Connect() error {
 		return err
 	}
 
-	// start a user shell
-	err = s.startSession()
-	if err != nil {
-		return err
-	}
-
 	return nil
 }
 
@@ -164,29 +154,40 @@ func (s *Shell) UploadPackageFiles(pkg _package.Package) error {
 	})
 }
 
-func (s *Shell) Run(c string) {
-	s.stdin <- []byte(c)
-	s.stdin <- []byte("\n")
+func (s *Shell) Run(c string) error {
+	session, err := s.client.NewSession()
+	if err != nil {
+		return err
+	}
+
+	stdout, _ := session.StdoutPipe()
+	stderr, _ := session.StderrPipe()
+
+	var wg sync.WaitGroup
+	go func() {
+		wg.Add(1)
+		s.consumeStdout(stdout)
+		wg.Done()
+	}()
+	go func() {
+		wg.Add(1)
+		s.consumeStderr(stderr)
+		wg.Done()
+	}()
+
+	var request string
+	for k, v := range s.Vars {
+		request += fmt.Sprintf("export CORRAL_%s=\"%s\"\n", k, v)
+	}
+	request += c
+
+	err = session.Run(fmt.Sprintf(request))
+	wg.Wait()
+
+	return err
 }
 
-func (s *Shell) Close() error {
-	var err error
-
-	if s.stdin != nil {
-		s.Run("exit")
-		go func() { close(s.stdin) }()
-	}
-	if s.stdout != nil {
-		go func() { close(s.stdout) }()
-	}
-	if s.stderr != nil {
-		go func() { close(s.stderr) }()
-	}
-
-	if s.session != nil {
-		_ = s.session.Wait()
-	}
-
+func (s *Shell) Close() {
 	if s.sftpClient != nil {
 		_ = s.sftpClient.Close()
 	}
@@ -198,69 +199,22 @@ func (s *Shell) Close() error {
 	if s.bastionClient != nil {
 		_ = s.bastionClient.Close()
 	}
-
-	return err
 }
 
-func (s *Shell) startSession() (err error) {
-	s.session, err = s.client.NewSession()
-	if err != nil {
-		return err
-	}
-
-	go s.connectStdin()
-	go s.connectStdout()
-	go s.connectStderr()
-
-	err = s.session.Shell()
-	if err != nil {
-		return err
-	}
-
-	for k, v := range s.Vars {
-		s.Run(fmt.Sprintf("export CORRAL_%s=\"%s\"\n", k, v))
-	}
-
-	return nil
-}
-
-func (s *Shell) connectStdin() {
-	if s.stdin != nil {
-		return
-	}
-
-	s.stdin = make(chan []byte, 0)
-	stdin, _ := s.session.StdinPipe()
-
-	for {
-		select {
-		case d := <-s.stdin:
-			_, _ = stdin.Write(d)
-		default:
-		}
-	}
-}
-
-func (s *Shell) connectStdout() {
-	if s.stdout != nil {
-		return
-	}
-
-	s.stdout = make(chan []byte, 0)
-	stdout, _ := s.session.StdoutPipe()
-
-	scanner := bufio.NewScanner(stdout)
+func (s *Shell) consumeStdout(pipe io.Reader) {
+	scanner := bufio.NewScanner(pipe)
 
 	for scanner.Scan() {
 		text := scanner.Text()
 
 		if strings.HasPrefix(text, corralSetVarCommand) {
-			vs := strings.TrimPrefix(text, corralSetVarCommand)
-			vs = strings.Trim(vs, " \t")
+			cmd := strings.TrimPrefix(text, corralSetVarCommand)
+			cmd = strings.Trim(cmd, " \t")
 
-			k, v := vars.ToVar(vs)
+			k, v := vars.ToVar(cmd)
 			if k == "" {
 				logrus.Warnf("failed to parse corral command: %s", text)
+
 				continue
 			}
 
@@ -272,21 +226,14 @@ func (s *Shell) connectStdout() {
 			logrus.Info(vs)
 		}
 
-		logrus.Debugf("[%s]: %s", s.Node.Address, scanner.Text())
+		logrus.Debugf("[%s]: %s", s.Node.Name, text)
 	}
 }
 
-func (s *Shell) connectStderr() {
-	if s.stderr != nil {
-		return
-	}
-
-	s.stderr = make(chan []byte, 0)
-	stderr, _ := s.session.StderrPipe()
-
-	scanner := bufio.NewScanner(stderr)
+func (s *Shell) consumeStderr(pipe io.Reader) {
+	scanner := bufio.NewScanner(pipe)
 
 	for scanner.Scan() {
-		logrus.Debugf("[%s]: %s", s.Node.Address, scanner.Text())
+		logrus.Debugf("[%s]: %s", s.Node.Name, scanner.Text())
 	}
 }
