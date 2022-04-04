@@ -57,7 +57,7 @@ func deleteCorral(cmd *cobra.Command, args []string) {
 						continue
 					}
 
-					logrus.Infof("destroying module: %s", pkg.Commands[i].Module)
+					logrus.Debugf("destroying module: %s", pkg.Commands[i].Module)
 					if err = c.DestroyModule(pkg.Commands[i].Module); err != nil {
 						logrus.Errorf("failed to cleanup module [%s]: %v", pkg.Commands[i].Module, err)
 						continue

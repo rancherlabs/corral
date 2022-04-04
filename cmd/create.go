@@ -6,21 +6,19 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
-	"github.com/rancherlabs/corral/pkg/vars"
-	"os"
-	"sync"
-	"time"
-
 	"github.com/rancherlabs/corral/pkg/config"
 	"github.com/rancherlabs/corral/pkg/corral"
 	_package "github.com/rancherlabs/corral/pkg/package"
 	"github.com/rancherlabs/corral/pkg/shell"
+	"github.com/rancherlabs/corral/pkg/vars"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/sync/errgroup"
-	"k8s.io/apimachinery/pkg/util/wait"
+	"os"
+	"runtime"
+	"sync"
 )
 
 var (
@@ -144,7 +142,8 @@ func create(_ *cobra.Command, args []string) {
 	corr.SetStatus(corral.StatusProvisioning)
 
 	var lastCommand int
-	knownAddresses := map[string]struct{}{}
+	knownNodes := map[*shell.Shell]struct{}{}
+	shellRegistry := shell.NewRegistry()
 	for i, cmd := range pkg.Manifest.Commands {
 		lastCommand = i
 
@@ -155,7 +154,31 @@ func create(_ *cobra.Command, args []string) {
 
 		if cmd.Command != "" {
 			logrus.Infof("[%d/%d] running command %s", i+1, len(pkg.Manifest.Commands), cmd.Command)
-			err = executeShellCommand(cmd.Command, distinctNodes(corr.NodePools, cmd.NodePoolNames...), corr.PrivateKey, corr.Vars)
+
+			// find all distinct nodes in the given node pools
+			var shells []*shell.Shell
+			seen := map[*shell.Shell]struct{}{}
+			for _, name := range cmd.NodePoolNames {
+				if np := corr.NodePools[name]; np != nil {
+					for _, n := range np {
+						// get or create a shell pointer for the node
+						sh, err := shellRegistry.GetShell(n, corr.PrivateKey, corr.Vars)
+						if err != nil {
+							corr.SetStatus(corral.StatusError)
+							logrus.Errorf("failed to connect to node [%s]: %s", n.Name, err)
+							break
+						}
+
+						// add distinct shells to the shells list
+						if _, ok := seen[sh]; !ok {
+							seen[sh] = seen[sh]
+							shells = append(shells, sh)
+						}
+					}
+				}
+			}
+
+			err = executeShellCommand(cmd.Command, shells, corr.Vars)
 		}
 
 		if err != nil {
@@ -164,30 +187,40 @@ func create(_ *cobra.Command, args []string) {
 			break
 		}
 
-		// collect new nodes
-		var nodes []corral.Node
-		for name, np := range corr.NodePools {
+		// collect new nodes to copy files
+		var newNodeShells []*shell.Shell
+		for npName, np := range corr.NodePools {
 			for _, n := range np {
-				if _, ok := knownAddresses[n.Address]; !ok {
-					n.OverlayRoot = pkg.Overlay[name]
-					nodes = append(nodes, n)
-					knownAddresses[n.Address] = knownAddresses[n.Address]
+				n.OverlayRoot = pkg.Overlay[npName]
+				sh, err := shellRegistry.GetShell(n, corr.PrivateKey, corr.Vars)
+				if err != nil {
+					corr.SetStatus(corral.StatusError)
+					logrus.Errorf("failed to connect to node [%s]: %s", n.Name, err)
+					break
+				}
+
+				if _, ok := knownNodes[sh]; !ok {
+					newNodeShells = append(newNodeShells, sh)
+					knownNodes[sh] = knownNodes[sh]
 				}
 			}
 		}
 
 		// copy package files to new nodes
-		err = copyPackageFiles(nodes, corr.PrivateKey, pkg)
+		err = copyPackageFiles(newNodeShells, pkg)
 		if err != nil {
 			corr.SetStatus(corral.StatusError)
 			logrus.Error("failed to copy package files: ", err)
-			return
+			break
 		}
 
 		_ = corr.Save()
-
 	}
 
+	// close all shells
+	shellRegistry.Close()
+
+	// if the corral is in an error state delete it
 	if corr.Status == corral.StatusError {
 		logrus.Info("attempting to roll back corral")
 		for i := lastCommand; i >= 0; i-- {
@@ -204,47 +237,28 @@ func create(_ *cobra.Command, args []string) {
 		}
 
 		_ = corr.Delete()
+	} else {
+
+		corr.SetStatus(corral.StatusReady)
 	}
 
 	logrus.Info("done!")
-	corr.SetStatus(corral.StatusReady)
 }
 
-func newShell(node corral.Node, privateKey string, vs vars.VarSet) (*shell.Shell, error) {
-	sh := &shell.Shell{
-		Node:       node,
-		PrivateKey: []byte(privateKey),
-		Vars:       vs,
-	}
-
-	err := sh.Connect()
-	if err != nil {
-		_ = sh.Close()
-		return nil, err
-	}
-
-	return sh, nil
-}
-
-func copyPackageFiles(nodes []corral.Node, privateKey string, pkg _package.Package) error {
+// copyPackageFiles copies the appropriate overlay files from the given package to the shells.  Concurrency is limited
+// to the number of cpus on the user's machine.
+func copyPackageFiles(shells []*shell.Shell, pkg _package.Package) error {
 	var wg errgroup.Group
-	for _, n := range nodes {
-		n := n
+	sem := make(chan bool, runtime.NumCPU())
+
+	for _, sh := range shells {
+		sh := sh
 		wg.Go(func() error {
-			var sh *shell.Shell
-			var err error
+			sem <- true
 
-			err = wait.Poll(time.Second, 2*time.Minute, func() (done bool, err error) {
-				sh, err = newShell(n, privateKey, nil)
-				return err == nil, nil
-			})
-			if err != nil {
-				return err
-			}
+			err := sh.UploadPackageFiles(pkg)
 
-			err = sh.UploadPackageFiles(pkg)
-			_ = sh.Close()
-
+			<-sem
 			return err
 		})
 	}
@@ -252,33 +266,21 @@ func copyPackageFiles(nodes []corral.Node, privateKey string, pkg _package.Packa
 	return wg.Wait()
 }
 
-func executeShellCommand(command string, nodes []corral.Node, privateKey string, vs vars.VarSet) error {
+// executeShellCommand runs the given command on the given shells. Any vars set are saved to the VarSet.  Concurrency
+// is limited to the number of cpus on the user's machine.
+func executeShellCommand(command string, shells []*shell.Shell, vs vars.VarSet) error {
 	var mu sync.Mutex
 	var wg errgroup.Group
-	for _, n := range nodes {
-		n := n
+	sem := make(chan bool, runtime.NumCPU())
 
-		lvs := make(vars.VarSet)
-		for k, v := range vs {
-			lvs[k] = v
-		}
-
+	for _, sh := range shells {
+		sh := sh
 		wg.Go(func() error {
-			var sh *shell.Shell
-			var err error
+			sem <- true
 
-			err = wait.Poll(time.Second, 2*time.Minute, func() (done bool, err error) {
-				sh, err = newShell(n, privateKey, lvs)
-				return err == nil, nil
-			})
+			err := sh.Run(command)
 			if err != nil {
-				return err
-			}
-
-			sh.Run(command)
-
-			err = sh.Close()
-			if err != nil {
+				<-sem
 				return err
 			}
 
@@ -288,6 +290,7 @@ func executeShellCommand(command string, nodes []corral.Node, privateKey string,
 			}
 			mu.Unlock()
 
+			<-sem
 			return nil
 		})
 	}
@@ -330,21 +333,4 @@ func encodePrivateKeyToPEM(key *rsa.PrivateKey) []byte {
 	}
 
 	return pem.EncodeToMemory(&privBlock)
-}
-
-func distinctNodes(nodePools map[string][]corral.Node, poolNames ...string) (nodes []corral.Node) {
-	seen := map[string]struct{}{}
-
-	for _, name := range poolNames {
-		if np := nodePools[name]; np != nil {
-			for _, n := range np {
-				if _, ok := seen[n.Address]; !ok {
-					seen[n.Address] = seen[n.Address]
-					nodes = append(nodes, n)
-				}
-			}
-		}
-	}
-
-	return nodes
 }
