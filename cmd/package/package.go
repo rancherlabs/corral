@@ -21,6 +21,7 @@ func NewCommandPackage() *cobra.Command {
 		NewCommandLogin(),
 		NewCommandInfo(),
 		NewCommandValidate(),
-		NewCommandDownload())
+		NewCommandDownload(),
+		NewCommandTemplate())
 	return cmd
 }

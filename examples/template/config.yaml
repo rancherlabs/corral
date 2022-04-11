@@ -1,0 +1,7 @@
+name: template
+description: >
+  A simple template example.
+  This package was generated with the following command:
+  `corral package template -f config.yaml test simple-test`
+packages:
+  - ../simple

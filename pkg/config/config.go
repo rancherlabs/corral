@@ -14,7 +14,7 @@ import (
 	"github.com/hashicorp/terraform-exec/tfexec"
 	"github.com/rancherlabs/corral/pkg/version"
 	"github.com/sirupsen/logrus"
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 type Config struct {

@@ -6,6 +6,10 @@ import (
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
+	"os"
+	"runtime"
+	"sync"
+
 	"github.com/rancherlabs/corral/pkg/config"
 	"github.com/rancherlabs/corral/pkg/corral"
 	_package "github.com/rancherlabs/corral/pkg/package"
@@ -16,9 +20,6 @@ import (
 	"github.com/spf13/viper"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/sync/errgroup"
-	"os"
-	"runtime"
-	"sync"
 )
 
 var (

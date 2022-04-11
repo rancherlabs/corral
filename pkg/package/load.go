@@ -7,13 +7,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/blang/semver"
-	"github.com/rancherlabs/corral/pkg/version"
 	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/blang/semver"
+	"github.com/rancherlabs/corral/pkg/version"
 
 	"github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/rancherlabs/corral/pkg/config"
@@ -24,7 +25,6 @@ func LoadPackage(ref string) (Package, error) {
 	path, _ := filepath.Abs(ref)
 	if _, err := os.Stat(path); err == nil {
 		return loadLocalPackage(path)
-
 	}
 
 	if !strings.Contains(ref, ":") {
@@ -36,7 +36,7 @@ func LoadPackage(ref string) (Package, error) {
 }
 
 func loadLocalPackage(src string) (pkg Package, err error) {
-	if _, err := os.Stat(src); err != nil {
+	if _, err = os.Stat(src); err != nil {
 		return pkg, err
 	}
 

@@ -1,10 +1,11 @@
 package cmd_package
 
 import (
+	"os"
+
 	_package "github.com/rancherlabs/corral/pkg/package"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
-	"os"
 )
 
 func NewCommandValidate() *cobra.Command {

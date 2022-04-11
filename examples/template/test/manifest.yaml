@@ -1,0 +1,16 @@
+name: test
+description: >
+  A simple package for developing corral.
+commands:
+  - command: /app/setvar2.sh
+    node_pools:
+      - all
+variables:
+  var1_out:
+    type: string
+    readOnly: true
+    description: "Set to the value of var1 by a corral set script."
+  var2_out:
+    type: string
+    readOnly: true
+    description: "Set to the value of var1_out by a corral set script."
