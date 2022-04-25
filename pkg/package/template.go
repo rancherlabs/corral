@@ -116,7 +116,7 @@ func copyFiles(root, dir string, pkg Package) error {
 			logrus.Debugf("%s: %s -> %s", pkg.Name, orig, destPath)
 
 			if _, err = os.Stat(destPath); err == nil {
-				logrus.Fatalf("file already exists: %s", destPath)
+				_ = os.Remove(destPath)
 			}
 
 			f, err := os.Create(destPath)
