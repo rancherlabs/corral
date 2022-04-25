@@ -95,7 +95,7 @@ func loadRemotePackage(ref string) (pkg Package, err error) {
 		return
 	}
 
-	if ver, err := semver.Parse(manifest.Annotations[CorralVersionAnnotation]); err != nil {
+	if ver, err := semver.Parse(manifest.Annotations[CorralVersionAnnotation]); err == nil {
 		if semver.MustParse(version.Version).Major > ver.Major {
 			return pkg, errors.New("packages must be published by the same major version of corral or later")
 		}
