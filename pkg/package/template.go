@@ -105,10 +105,6 @@ func copyFiles(root, dir string, pkg Package) error {
 			return err
 		}
 
-		if path == dir {
-			return nil
-		}
-
 		orig := path[len(dir):]
 		destPath := root + orig
 
