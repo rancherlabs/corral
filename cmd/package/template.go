@@ -1,11 +1,11 @@
 package cmd_package
 
 import (
+	"github.com/sirupsen/logrus"
 	"os"
 	"path/filepath"
 
 	_package "github.com/rancherlabs/corral/pkg/package"
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 )
@@ -15,80 +15,66 @@ Create a package from existing package(s).
 
 Examples:
 corral package template a b c OUT 
-corral package template -f config.yaml
+corral package template --description "my description" a b c OUT
 `
 
 func NewCommandTemplate() *cobra.Command {
+	var description string
+
 	cmd := &cobra.Command{
 		Use:   "template",
 		Short: "Create a package from a template",
 		Long:  templateDescription,
 		Run: func(cmd *cobra.Command, args []string) {
-			err := template(cmd, args)
-			if err != nil {
-				logrus.Fatalf("Error rendering package template: %v", err)
-			}
+			template(args[len(args)-1], description, args[:len(args)-1]...)
 		},
-		Args: cobra.MinimumNArgs(1),
+		Args: cobra.MinimumNArgs(2),
 	}
 
-	cmd.Flags().StringP("file", "f", "", "yaml file to define template values")
+	cmd.Flags().StringVar(&description, "description", "", "description of the rendered package")
 
 	return cmd
 }
 
 // embed a template
-func template(cmd *cobra.Command, args []string) error {
-	file, err := cmd.Flags().GetString("file")
-	if err != nil {
-		return err
-	}
+func template(name, description string, packages ...string) {
+	pkgs := make([]_package.Package, len(packages))
 
-	body, err := os.ReadFile(file)
-	if err != nil {
-		return err
-	}
-
-	var t _package.TemplateSpec
-
-	if err = yaml.Unmarshal(body, &t); err != nil {
-		return err
-	}
-
-	srcs := append(t.Packages, args[:len(args)-1]...)
-	pkgs := make([]_package.Package, len(srcs))
-
-	for i, p := range srcs {
+	for i, p := range packages {
 		pkg, err := _package.LoadPackage(p) // ensures pkg is in cache
 		if err != nil {
-			return err
+			logrus.Fatalf("failed to load [%s] package", p)
 		}
 		pkgs[i] = pkg
 	}
 
-	name := args[len(args)-1]
-
 	manifest, err := _package.MergePackages(name, pkgs)
 	if err != nil {
-		return err
+		logrus.Fatal(err)
 	}
 
-	manifest.Description = t.Description
+	if description == "" {
+		for i := range pkgs {
+			if i > 0 {
+				description += "\n"
+			}
 
-	buf, err := yaml.Marshal(manifest)
+			if pkgs[i].Description != "" {
+				description += pkgs[i].Description
+			}
+		}
+	}
+	manifest.Description = description
+
+	buf, _ := yaml.Marshal(manifest)
+
+	err = os.WriteFile(filepath.Join(name, "manifest.yaml"), buf, 0664)
 	if err != nil {
-		return err
+		logrus.Fatal("failed to write manifest: ", err)
 	}
 
 	err = _package.ValidateManifest(buf)
 	if err != nil {
-		return err
+		logrus.Fatal("rendered package is not a valid package: ", err)
 	}
-
-	err = os.WriteFile(filepath.Join(name, "manifest.yaml"), buf, 0664)
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
