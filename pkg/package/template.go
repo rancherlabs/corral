@@ -13,11 +13,6 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-type TemplateSpec struct {
-	Description string   `yaml:"description"`
-	Packages    []string `yaml:"packages"`
-}
-
 type TemplateManifest struct {
 	Name            string                 `yaml:"name"`
 	Annotations     map[string]string      `yaml:"annotations,omitempty"`
