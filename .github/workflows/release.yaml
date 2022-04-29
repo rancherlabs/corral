@@ -15,10 +15,6 @@ jobs:
         with:
           go-version: "1.17.5"
       - run: scripts/build
-      - run: install dist/corral-"$VERSION"-amd64 /usr/local/bin/corral
-      - run: corral config --user_id ci --public_key=/dev/null
-      - run: corral package login --username ${{ github.actor }} --password ${{ secrets.GITHUB_TOKEN }} ghcr.io
-      - run: scripts/push-packages
       - uses: softprops/action-gh-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
