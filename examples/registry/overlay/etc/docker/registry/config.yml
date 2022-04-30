@@ -1,0 +1,32 @@
+version: 0.1
+log:
+  accesslog:
+    disabled: true
+  level: info
+  formatter: text
+  fields:
+    service: registry
+    environment: staging
+storage:
+  filesystem:
+    rootdirectory: /var/lib/registry
+    maxthreads: 100
+  delete:
+    enabled: false
+  redirect:
+    disable: false
+auth:
+  htpasswd:
+    realm: basic-realm
+    path: /etc/docker/registry/htpasswd
+http:
+  addr: 0.0.0.0:443
+  host: https://HOSTNAME
+  tls:
+    certificate: /etc/docker/registry/ssl/registry.crt
+    key: /etc/docker/registry/ssl/registry.key
+  headers:
+    X-Content-Type-Options: [nosniff]
+  http2:
+    disabled: false
+

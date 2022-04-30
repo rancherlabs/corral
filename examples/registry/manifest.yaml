@@ -1,0 +1,31 @@
+name: registry
+description: |
+  An authenticated docker registry running in Digitalocean.
+variables:
+  digitalocean_token:
+    sensitive: true
+    type: string
+    optional: false
+    description: "A Digitalocean API token with write permission. https://docs.digitalocean.com/reference/api/create-personal-access-token/"
+  digitalocean_domain:
+    sensitive: true
+    type: string
+    optional: false
+    description: "The domain to use for the registry host."
+  registry_host:
+    type: string
+    readOnly: true
+    description: "host the configured registry can be accessed at"
+  username:
+    type: string
+    readOnly: true
+    description: "username for registry authentication"
+  password:
+    type: string
+    readOnly: true
+    description: "password for registry authentication"
+commands:
+  - module: main
+  - command: /opt/corral/install.sh
+    node_pools:
+      - registry
