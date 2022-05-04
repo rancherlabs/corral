@@ -64,6 +64,7 @@ func template(name, description string, packages ...string) {
 			}
 		}
 	}
+	manifest.Name = filepath.Base(name)
 	manifest.Description = description
 
 	buf, _ := yaml.Marshal(manifest)
