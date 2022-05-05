@@ -6,7 +6,7 @@
     "name": {
       "type": "string",
       "minLength": 1,
-      "maxLength": 16,
+      "maxLength": 255,
       "description": "The name of the package."
     },
     "annotations": {
