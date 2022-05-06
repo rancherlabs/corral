@@ -9,10 +9,15 @@ To install corral download the latest binary from the [releases](https://github.
 Before we can use corral we need to run the first time setup.
 
 ```shell
-corral config -v digitalocean_token=$MY_DO_TOKEN -v digitalocean_domain=$MY_DO_DOMAIN
+corral config
 ```
 
-When we configured corral we also set two variables `digitalocean_token` and `digitalocean_domain`.  Any variables set with config will be passed to all corrals.  This is useful for setting things like cloud credentials or ssh keys. You can always override these values when creating a new corral with the `-v` flag.
+We also want to set a few global variables, `digitalocean_token` and `digitalocean_domain`.  Any variables set with config will be passed to all corrals.  This is useful for setting things like cloud credentials or ssh keys. You can always override these values when creating a new corral with the `-v` flag.
+
+```shell
+corral config vars set digitalocean_token $MY_DO_TOKEN
+corral config vars set digitalocean_domain $MY_DO_DOMAIN
+```
 
 ## Create
 
