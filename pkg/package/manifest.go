@@ -19,6 +19,7 @@ type Command struct {
 	// shell fields
 	Command       string   `yaml:"command,omitempty"`
 	NodePoolNames []string `yaml:"node_pools,omitempty"`
+	Parallel      *bool    `yaml:"parallel,omitempty"`
 
 	// terraform module fields
 	Module      string `yaml:"module,omitempty"`

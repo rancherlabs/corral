@@ -153,6 +153,10 @@ func create(_ *cobra.Command, args []string) {
 			err = corr.ApplyModule(pkg.TerraformModulePath(cmd.Module), cmd.Module)
 		}
 
+		if cmd.Parallel == nil {
+			cmd.Parallel = &[]bool{true}[0]
+		}
+
 		if cmd.Command != "" {
 			logrus.Infof("[%d/%d] running command %s", i+1, len(pkg.Manifest.Commands), cmd.Command)
 
@@ -179,7 +183,7 @@ func create(_ *cobra.Command, args []string) {
 				}
 			}
 
-			err = executeShellCommand(cmd.Command, shells, corr.Vars)
+			err = executeShellCommand(cmd.Command, shells, corr.Vars, *cmd.Parallel)
 		}
 
 		if err != nil {
@@ -267,9 +271,16 @@ func copyPackageFiles(shells []*shell.Shell, pkg _package.Package) error {
 	return wg.Wait()
 }
 
-// executeShellCommand runs the given command on the given shells. Any vars set are saved to the VarSet.  Concurrency
-// is limited to the number of cpus on the user's machine.
-func executeShellCommand(command string, shells []*shell.Shell, vs vars.VarSet) error {
+func executeShellCommand(command string, shells []*shell.Shell, vs vars.VarSet, parallel bool) error {
+	if parallel {
+		return executeShellCommandAsync(command, shells, vs)
+	}
+	return executeShellCommandSync(command, shells, vs)
+}
+
+// executeShellCommandAsync runs the given command on the given shells. Any vars set are saved to the VarSet.
+// Concurrency is limited to the number of cpus on the user's machine.
+func executeShellCommandAsync(command string, shells []*shell.Shell, vs vars.VarSet) error {
 	var mu sync.Mutex
 	var wg errgroup.Group
 	sem := make(chan bool, runtime.NumCPU())
@@ -297,6 +308,22 @@ func executeShellCommand(command string, shells []*shell.Shell, vs vars.VarSet) 
 	}
 
 	return wg.Wait()
+}
+
+func executeShellCommandSync(command string, shells []*shell.Shell, vs vars.VarSet) error {
+	for _, sh := range shells {
+		sh := sh
+		err := sh.Run(command)
+		if err != nil {
+			return err
+		}
+
+		for k, v := range sh.Vars {
+			vs[k] = v
+		}
+	}
+
+	return nil
 }
 
 func generatePrivateKey(bits int) (*rsa.PrivateKey, error) {
