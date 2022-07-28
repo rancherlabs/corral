@@ -62,10 +62,13 @@ func NewCommandCreate() *cobra.Command {
 	cmd.Flags().StringP("package", "p", "", "Set a variable to configure the package.")
 	_ = cfgViper.BindPFlag("package", cmd.Flags().Lookup("package"))
 
+	cmd.Flags().Bool("recreate", false, "Destroy corral with the same name if it exists before creating.")
+	_ = cfgViper.BindPFlag("recreate", cmd.Flags().Lookup("recreate"))
+
 	return cmd
 }
 
-func create(_ *cobra.Command, args []string) {
+func create(cmd *cobra.Command, args []string) {
 	cfg := config.MustLoad()
 
 	var corr corral.Corral
@@ -81,6 +84,11 @@ func create(_ *cobra.Command, args []string) {
 	// get the source from flags or args
 	if corr.Source == "" {
 		logrus.Fatal("You must specify a package with the `-p` flag or as an argument.")
+	}
+
+	if cfgViper.GetBool("recreate") {
+		logrus.Infof("Deleting existing corral [%s]", args[0])
+		deleteCorral(cmd, args[0:1])
 	}
 
 	// ensure this corral is unique
