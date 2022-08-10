@@ -65,6 +65,9 @@ func NewCommandCreate() *cobra.Command {
 	cmd.Flags().Bool("recreate", false, "Destroy corral with the same name if it exists before creating.")
 	_ = cfgViper.BindPFlag("recreate", cmd.Flags().Lookup("recreate"))
 
+	cmd.Flags().Bool("skip-cleanup", false, "Do not run terraform destroy when an error is encountered. This can result in un-tracked infrastructure resources!")
+	_ = cfgViper.BindPFlag("skip-cleanup", cmd.Flags().Lookup("skip-cleanup"))
+
 	return cmd
 }
 
@@ -235,23 +238,25 @@ func create(cmd *cobra.Command, args []string) {
 
 	// if the corral is in an error state delete it
 	if corr.Status == corral.StatusError {
-		logrus.Info("attempting to roll back corral")
-		for i := lastCommand; i >= 0; i-- {
-			if pkg.Commands[i].Module != "" {
-				if pkg.Commands[i].SkipCleanup {
-					continue
-				}
+		if cfgViper.GetBool("skip-cleanup") {
+			logrus.Warnf("skipping roll back")
+		} else {
+			logrus.Info("attempting to roll back corral")
+			for i := lastCommand; i >= 0; i-- {
+				if pkg.Commands[i].Module != "" {
+					if pkg.Commands[i].SkipCleanup {
+						continue
+					}
 
-				logrus.Infof("rolling back %s module", pkg.Commands[i].Module)
-				if err = corr.DestroyModule(pkg.Commands[i].Module); err != nil {
-					logrus.Fatalf("failed to cleanup module [%s]: %v", pkg.Commands[i].Module, err)
+					logrus.Infof("rolling back %s module", pkg.Commands[i].Module)
+					if err = corr.DestroyModule(pkg.Commands[i].Module); err != nil {
+						logrus.Fatalf("failed to cleanup module [%s]: %v", pkg.Commands[i].Module, err)
+					}
 				}
 			}
+			_ = corr.Delete()
 		}
-
-		_ = corr.Delete()
 	} else {
-
 		corr.SetStatus(corral.StatusReady)
 	}
 
