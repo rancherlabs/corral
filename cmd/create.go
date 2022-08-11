@@ -240,6 +240,7 @@ func create(cmd *cobra.Command, args []string) {
 	if corr.Status == corral.StatusError {
 		if cfgViper.GetBool("skip-cleanup") {
 			logrus.Warnf("skipping roll back")
+			_ = corr.Save()
 		} else {
 			logrus.Info("attempting to roll back corral")
 			for i := lastCommand; i >= 0; i-- {
