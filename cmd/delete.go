@@ -22,7 +22,7 @@ func NewCommandDelete() *cobra.Command {
 		Short: "Delete the given corral(s) and the associated infrastructure.",
 		Long:  deleteDescription,
 		Args:  cobra.MinimumNArgs(1),
-		Run:   deleteCorral,
+		Run:   deleteCorrals,
 	}
 
 	cmd.Flags().Bool("skip-cleanup", false, "Do not run terraform destroy just delete the package.  This can result in un-tracked infrastructure resources!")
@@ -30,42 +30,54 @@ func NewCommandDelete() *cobra.Command {
 	return cmd
 }
 
-func deleteCorral(cmd *cobra.Command, args []string) {
+func deleteCorrals(cmd *cobra.Command, args []string) {
+	skipCleanup, _ := cmd.Flags().GetBool("skip-cleanup")
 	for _, name := range args {
-		c, err := corral.Load(config.CorralPath(name))
+		err := deleteCorral(name, skipCleanup)
 		if err != nil {
-			if errors.Is(err, os.ErrNotExist) {
-				logrus.Warnf("skipping corral [%s], does not exist", name)
-				continue
-			} else {
-				logrus.Fatal(err)
-			}
+			logrus.Errorf("failed to delete corral [%s]: %s", name, err)
+			continue
+		}
+		logrus.Infof("deleted corral [%s]", name)
+	}
+}
+
+func deleteCorral(name string, skipCleanup bool) error {
+	c, err := corral.Load(config.CorralPath(name))
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			logrus.Warnf("skipping corral [%s], does not exist", name)
+			return nil
+		} else {
+			return err
+		}
+	}
+
+	c.SetStatus(corral.StatusDeleting)
+
+	if !skipCleanup {
+		logrus.Infof("cleaning up corral: %s", name)
+		pkg, err := _package.LoadPackage(c.Source)
+		if err != nil {
+			return err
 		}
 
-		c.SetStatus(corral.StatusDeleting)
+		for i := len(pkg.Commands) - 1; i >= 0; i-- {
+			if pkg.Commands[i].Module != "" {
+				if pkg.Commands[i].SkipCleanup {
+					continue
+				}
 
-		if skip, _ := cmd.Flags().GetBool("skip-cleanup"); !skip {
-			logrus.Infof("cleaning up corral: %s", name)
-			pkg, err := _package.LoadPackage(c.Source)
-			if err != nil {
-				logrus.Error("could not load package associated with corral: ", err)
-			}
-
-			for i := len(pkg.Commands) - 1; i >= 0; i-- {
-				if pkg.Commands[i].Module != "" {
-					if pkg.Commands[i].SkipCleanup {
-						continue
-					}
-
-					logrus.Debugf("destroying module: %s", pkg.Commands[i].Module)
-					if err = c.DestroyModule(pkg.Commands[i].Module); err != nil {
-						logrus.Errorf("failed to cleanup module [%s]: %v", pkg.Commands[i].Module, err)
-						continue
-					}
+				logrus.Debugf("destroying module: %s", pkg.Commands[i].Module)
+				if err = c.DestroyModule(pkg.Commands[i].Module); err != nil {
+					logrus.Errorf("failed to cleanup module [%s]: %v", pkg.Commands[i].Module, err)
+					continue
 				}
 			}
 		}
-
-		err = c.Delete()
+	} else {
+		logrus.Warnf("skipping cleanup for corral [%s]", name)
 	}
+
+	return c.Delete()
 }

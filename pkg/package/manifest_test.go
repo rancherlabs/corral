@@ -77,7 +77,7 @@ func TestValidateVarSet(t *testing.T) {
 		vs := vars.VarSet{
 			"a": "aval",
 			"c": "cval",
-			"d": "true",
+			"d": true,
 		}
 
 		res := manifest.ValidateVarSet(vs, true)
@@ -101,9 +101,9 @@ func TestValidateVarSet(t *testing.T) {
 	{ // read only no write
 		vs := vars.VarSet{
 			"a": "aval",
-			"b": "12",
+			"b": 12,
 			"c": "cval",
-			"d": "true",
+			"d": true,
 		}
 
 		res := manifest.ValidateVarSet(vs, false)

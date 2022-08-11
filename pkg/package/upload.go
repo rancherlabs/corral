@@ -20,6 +20,9 @@ func UploadPackage(pkg Package, ref string) error {
 	logrus.Info("building manifest")
 	memoryStore := content.NewMemory()
 	configDescriptor, err := getManifestDescriptor(memoryStore, pkg)
+	if err != nil {
+		return err
+	}
 
 	logrus.Info("compressing package contents")
 	var contents []v1.Descriptor
@@ -43,7 +46,13 @@ func UploadPackage(pkg Package, ref string) error {
 	}
 
 	manifestData, manifestDescriptor, err := content.GenerateManifest(&configDescriptor, pkg.Annotations, contents...)
-	_ = memoryStore.StoreManifest(ref, manifestDescriptor, manifestData)
+	if err != nil {
+		return err
+	}
+
+	if err = memoryStore.StoreManifest(ref, manifestDescriptor, manifestData); err != nil {
+		return err
+	}
 
 	registryStore, err := newRegistryStore()
 	if err != nil {
@@ -141,6 +150,10 @@ func compressPath(prefix, root string) ([]byte, error) {
 	err := fs.WalkDir(sfs, ".", func(path string, d fs.DirEntry, err error) error {
 		if path == "." {
 			return nil
+		}
+
+		if err != nil {
+			return err
 		}
 
 		if d.IsDir() {

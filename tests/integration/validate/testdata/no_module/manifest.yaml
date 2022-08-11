@@ -1,0 +1,4 @@
+name: no_module
+description: Test no module
+commands:
+  - module: dummy

@@ -10,5 +10,5 @@ type Schema struct {
 	Sensitive   bool
 	Optional    bool
 	Description string
-	Default     string
+	Default     any
 }

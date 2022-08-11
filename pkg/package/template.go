@@ -2,6 +2,7 @@ package _package
 
 import (
 	"errors"
+	"fmt"
 	"io"
 	"io/fs"
 	"io/ioutil"
@@ -14,21 +15,67 @@ import (
 )
 
 type TemplateManifest struct {
-	Name            string                 `yaml:"name"`
-	Annotations     map[string]string      `yaml:"annotations,omitempty"`
-	Description     string                 `yaml:"description"`
-	Commands        []Command              `yaml:"commands"`
-	Overlay         map[string]string      `yaml:"overlay,omitempty"`
-	VariableSchemas map[string]interface{} `yaml:"variables,omitempty"`
+	Name            string            `yaml:"name"`
+	Annotations     map[string]string `yaml:"annotations,omitempty"`
+	Description     string            `yaml:"description"`
+	Commands        []Command         `yaml:"commands"`
+	Overlay         map[string]string `yaml:"overlay,omitempty"`
+	VariableSchemas map[string]any    `yaml:"variables,omitempty"`
 }
 
-func MergePackages(name string, pkgs []Package) (TemplateManifest, error) {
-	t := TemplateManifest{
-		Name:            name,
-		Overlay:         map[string]string{},
-		VariableSchemas: map[string]interface{}{},
+func Template(name, description string, packages ...string) error {
+	pkgs := make([]Package, len(packages))
+
+	for i, p := range packages {
+		pkg, err := LoadPackage(p) // ensures pkg is in cache
+		if err != nil {
+			return fmt.Errorf("failed to load [%s] package: %w", p, err)
+		}
+		pkgs[i] = pkg
 	}
-	var srcs = map[string]string{}
+
+	manifest, err := MergePackages(name, description, pkgs)
+	if err != nil {
+		return err
+	}
+
+	buf, err := yaml.Marshal(manifest)
+	if err != nil {
+		return err
+	}
+
+	err = os.WriteFile(filepath.Join(name, "manifest.yaml"), buf, 0664)
+	if err != nil {
+		return fmt.Errorf("failed to write manifest: %w", err)
+	}
+
+	err = ValidateManifest(buf)
+	if err != nil {
+		return fmt.Errorf("rendered package is not a valid package: %w", err)
+	}
+	return nil
+}
+
+func MergePackages(name, description string, pkgs []Package) (TemplateManifest, error) {
+	if description == "" {
+		for i := range pkgs {
+			if i > 0 {
+				description += "\n"
+			}
+
+			if pkgs[i].Description != "" {
+				description += pkgs[i].Description
+			}
+		}
+	}
+
+	t := TemplateManifest{
+		Name:            filepath.Base(name),
+		Description:     description,
+		Overlay:         map[string]string{},
+		VariableSchemas: map[string]any{},
+	}
+
 	for _, pkg := range pkgs {
 		buf, err := ioutil.ReadFile(filepath.Join(pkg.RootPath, "manifest.yaml"))
 		if err != nil {
@@ -36,9 +83,9 @@ func MergePackages(name string, pkgs []Package) (TemplateManifest, error) {
 		}
 
 		yml := struct {
-			VariableSchemas map[string]interface{} `yaml:"variables,omitempty"`
+			VariableSchemas map[string]any `yaml:"variables,omitempty"`
 		}{
-			VariableSchemas: map[string]interface{}{},
+			VariableSchemas: map[string]any{},
 		}
 
 		err = yaml.Unmarshal(buf, &yml)
@@ -61,7 +108,6 @@ func MergePackages(name string, pkgs []Package) (TemplateManifest, error) {
 			} else {
 				t.VariableSchemas[k] = v
 			}
-			srcs[k] = pkg.Name
 		}
 
 		logrus.Infof("Copying modules from %s", pkg.Name)
@@ -77,7 +123,6 @@ func MergePackages(name string, pkgs []Package) (TemplateManifest, error) {
 		if err != nil {
 			return t, err
 		}
-
 	}
 	return t, nil
 }
@@ -130,8 +175,8 @@ func copyFiles(root, dir string, pkg Package) error {
 			}
 
 			_, err = io.Copy(f, in)
-			f.Close()
-			in.Close()
+			_ = f.Close()
+			_ = in.Close()
 
 			if err != nil {
 				return err
@@ -143,11 +188,11 @@ func copyFiles(root, dir string, pkg Package) error {
 	return err
 }
 
-func mergeVariable(vars ...interface{}) interface{} {
-	out := map[string]interface{}{}
+func mergeVariable(vars ...any) any {
+	out := map[string]any{}
 
 	for _, v := range vars {
-		vm := v.(map[string]interface{})
+		vm := v.(map[string]any)
 
 		for k, v := range vm {
 			out[k] = v

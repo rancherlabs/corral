@@ -49,7 +49,7 @@ func listVars(cmd *cobra.Command, args []string) error {
 
 	// if only one output is requested return the raw value
 	if len(args) == 2 {
-		_, _ = os.Stdout.WriteString(c.Vars[args[1]] + "\n")
+		_, _ = os.Stdout.WriteString(fmt.Sprintf("%v\n", c.Vars[args[1]]))
 		return nil
 	}
 

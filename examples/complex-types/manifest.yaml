@@ -1,0 +1,40 @@
+name: complex-types
+description: >
+  A simple package for developing corral.
+commands:
+  - module: module
+  - command: /app/complex.sh
+    node_pools:
+      - all
+variables:
+  mapvar:
+    type: object
+    default:
+      foo: bar
+    description: "Example json object variable for testing variable flows."
+  mapvar1:
+    type: object
+    readOnly: true
+  mapvar2:
+    type: object
+    readOnly: true
+  listvar:
+    type: array
+    default:
+      - 1
+      - 2
+      - 3
+    description: "Example json array variable for testing variable flows."
+  listvar1:
+    type: array
+    readOnly: true
+  listvar2:
+    type: array
+    readOnly: true
+  numbervar:
+    type: number
+    default: 1
+    description: "Example json number variable for testing variable flows."
+  stringvar:
+    type: string
+    readOnly: true

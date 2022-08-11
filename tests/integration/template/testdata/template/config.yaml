@@ -1,0 +1,6 @@
+name: template
+description: >
+  template test
+packages:
+  - template1
+  - template2

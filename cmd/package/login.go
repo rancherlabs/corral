@@ -27,11 +27,11 @@ func login(cmd *cobra.Command, args []string) {
 	password, _ := cmd.Flags().GetString("password")
 
 	if username == "" {
-		username = prompt(fmt.Sprintf("username: "))
+		username = prompt("username: ")
 	}
 
 	if password == "" {
-		password = prompt(fmt.Sprintf("password: "))
+		password = prompt("password: ")
 	}
 
 	err := _package.AddRegistryCredentials(args[0], username, password)

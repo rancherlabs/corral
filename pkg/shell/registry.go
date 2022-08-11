@@ -1,11 +1,12 @@
 package shell
 
 import (
+	"sync"
+	"time"
+
 	"github.com/rancherlabs/corral/pkg/corral"
 	"github.com/rancherlabs/corral/pkg/vars"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"sync"
-	"time"
 )
 
 type Registry struct {
@@ -54,7 +55,7 @@ func (r *Registry) GetShell(n corral.Node, privateKey string, vs vars.VarSet) (*
 
 // Close all shells in the registry.
 func (r *Registry) Close() {
-	r.reg.Range(func(key, value interface{}) bool {
+	r.reg.Range(func(key, value any) bool {
 		value.(*Shell).Close()
 
 		return true

@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/rancherlabs/corral/pkg/vars"
@@ -88,7 +87,11 @@ func LoadManifest(_fs fs.FS, path string) (Manifest, error) {
 func (m *Manifest) ApplyDefaultVars(vs vars.VarSet) error {
 	for k, schema := range m.VariableSchemas {
 		if _, ok := vs[k]; !ok {
-			vs[k] = schema.Default
+			if schema.Default == nil {
+				continue
+			}
+			value := schema.Default
+			vs[k] = value
 		}
 	}
 
@@ -98,7 +101,7 @@ func (m *Manifest) ApplyDefaultVars(vs vars.VarSet) error {
 // ValidateDefaults returns an error if the var set does not match the manifest variable schemas.
 func (m *Manifest) ValidateDefaults() error {
 	for _, schema := range m.VariableSchemas {
-		if schema.Default != "" {
+		if schema.Default != nil {
 			err := schema.Validate(schema.Default)
 			if err != nil {
 				return err
@@ -112,21 +115,16 @@ func (m *Manifest) ValidateDefaults() error {
 // ValidateVarSet returns an error if the var set does not match the manifest variable schemas.
 func (m *Manifest) ValidateVarSet(vs vars.VarSet, write bool) error {
 	for k, schema := range m.VariableSchemas {
-		var parsedValue interface{}
 
 		if _, ok := vs[k]; schema.ReadOnly && write && ok {
 			return fmt.Errorf("[%s] may not be set", k)
 		}
 
-		if _, ok := vs[k]; !schema.Optional && !schema.ReadOnly && schema.Default == "" && !ok {
+		if _, ok := vs[k]; !schema.Optional && !schema.ReadOnly && schema.Default == nil && !ok {
 			return fmt.Errorf("[%s] is required", k)
 		}
 
-		if err := json.Unmarshal([]byte(vs[k]), &parsedValue); err != nil {
-			parsedValue = vs[k]
-		}
-
-		if err := schema.Validate(parsedValue); err != nil && parsedValue != "" {
+		if err := schema.Validate(vs[k]); err != nil && vs[k] != nil {
 			return errors.Wrap(err, k+":")
 		}
 	}
@@ -176,7 +174,7 @@ func (m *Manifest) GetAnnotation(key string) string {
 
 // ValidateManifest returns an error of the manifest violates any rules defined in the package-manifest.schema.json
 func ValidateManifest(manifest []byte) error {
-	var yml interface{}
+	var yml any
 
 	_ = yaml.Unmarshal(manifest, &yml)
 
@@ -185,18 +183,18 @@ func ValidateManifest(manifest []byte) error {
 	return manifestSchema.Validate(j)
 }
 
-// toStringKeys converts any map[interface{}]interface{} to map[string]interface{} recursively.
-func toStringKeys(val interface{}) interface{} {
+// toStringKeys converts any map[any]any to map[string]any recursively.
+func toStringKeys(val any) any {
 	switch val := val.(type) {
-	case map[interface{}]interface{}:
-		m := make(map[string]interface{})
+	case map[any]any:
+		m := make(map[string]any)
 		for k, v := range val {
 			k := k.(string)
 			m[k] = toStringKeys(v)
 		}
 		return m
-	case []interface{}:
-		var l = make([]interface{}, len(val))
+	case []any:
+		var l = make([]any, len(val))
 		for i, v := range val {
 			l[i] = toStringKeys(v)
 		}
@@ -206,12 +204,12 @@ func toStringKeys(val interface{}) interface{} {
 	}
 }
 
-func (s *VariableSchemas) UnmarshalYAML(unmarshal func(interface{}) error) error {
+func (s *VariableSchemas) UnmarshalYAML(unmarshal func(any) error) error {
 	*s = VariableSchemas{}
 	_vars := struct {
-		VariableSchemas map[string]interface{} `yaml:"variables,inline,omitempty"`
+		VariableSchemas map[string]any `yaml:"variables,inline,omitempty"`
 	}{
-		VariableSchemas: map[string]interface{}{},
+		VariableSchemas: map[string]any{},
 	}
 	err := unmarshal(&_vars)
 	if err != nil {
@@ -227,7 +225,7 @@ func (s *VariableSchemas) UnmarshalYAML(unmarshal func(interface{}) error) error
 		schema.Schema = schemaCompiler.MustCompile(k)
 		schema.Location = k
 
-		if vv, ok := v.(map[string]interface{}); ok {
+		if vv, ok := v.(map[string]any); ok {
 			if val, okk := vv["sensitive"].(bool); okk && val {
 				schema.Sensitive = true
 			}
@@ -245,11 +243,7 @@ func (s *VariableSchemas) UnmarshalYAML(unmarshal func(interface{}) error) error
 			}
 
 			if dflt, okk := vv["default"]; okk {
-				b, _ := json.Marshal(dflt)
-				s := string(b)
-				s = strings.TrimSuffix(s, "\"")
-				s = strings.TrimPrefix(s, "\"")
-				schema.Default = s
+				schema.Default = dflt
 			}
 		}
 

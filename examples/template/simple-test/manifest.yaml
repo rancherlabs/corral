@@ -1,6 +1,5 @@
 name: simple-test
-description: |
-    A simple template example. This package was generated with the following command: `corral package template -f config.yaml simple-test`
+description: 'A simple template example. This package was generated with the following command: `corral package template -f config.yaml simple-test`'
 commands:
     - module: simple/module
     - command: /app/setvar1.sh

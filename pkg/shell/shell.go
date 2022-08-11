@@ -2,16 +2,19 @@ package shell
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
-	"github.com/rancherlabs/corral/pkg/vars"
 	"io"
 	"io/fs"
 	"net"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/rancherlabs/corral/pkg/vars"
 
 	"github.com/pkg/sftp"
 	"github.com/rancherlabs/corral/pkg/corral"
@@ -164,27 +167,54 @@ func (s *Shell) Run(c string) error {
 	stderr, _ := session.StderrPipe()
 
 	var wg sync.WaitGroup
+	wg.Add(2)
 	go func() {
-		wg.Add(1)
 		s.consumeStdout(stdout)
 		wg.Done()
 	}()
 	go func() {
-		wg.Add(1)
 		s.consumeStderr(stderr)
 		wg.Done()
 	}()
 
-	var request string
-	for k, v := range s.Vars {
-		request += fmt.Sprintf("export CORRAL_%s=\"%s\"\n", k, v)
+	envVars, err := varsToEnvVars(s.Vars)
+	if err != nil {
+		return err
 	}
-	request += c
+	request := strings.Join(append(envVars, c), "\n")
 
-	err = session.Run(fmt.Sprintf(request))
+	logrus.Tracef("request: %s", request)
+
+	err = session.Run(request)
 	wg.Wait()
 
 	return err
+}
+
+func varsToEnvVars(varSet vars.VarSet) ([]string, error) {
+	result := make([]string, 0, len(varSet))
+	keys := make([]string, 0, len(varSet))
+	for k := range varSet {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	for _, k := range keys {
+		v := varSet[k]
+		b, err := json.Marshal(&v)
+		if err != nil {
+			return nil, err
+		}
+		str := string(b)
+		if strings.HasPrefix(str, `"`) && strings.HasSuffix(str, `"`) {
+			str = strings.Trim(str, `"`)
+		}
+		if !strings.HasPrefix(str, `'`) && !strings.HasSuffix(str, `'`) {
+			str = fmt.Sprintf("'%s'", str)
+		}
+		result = append(result, fmt.Sprintf("export CORRAL_%s=%s", k, str))
+	}
+	return result, nil
 }
 
 func (s *Shell) Close() {
@@ -211,10 +241,12 @@ func (s *Shell) consumeStdout(pipe io.Reader) {
 			cmd := strings.TrimPrefix(text, corralSetVarCommand)
 			cmd = strings.Trim(cmd, " \t")
 
-			k, v := vars.ToVar(cmd)
+			k, v, err := vars.ToVar(cmd)
+			if err != nil {
+				logrus.Error(err)
+			}
 			if k == "" {
 				logrus.Warnf("failed to parse corral command: %s", text)
-
 				continue
 			}
 
