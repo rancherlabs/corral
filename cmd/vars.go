@@ -1,12 +1,13 @@
 package cmd
 
 import (
+	"fmt"
 	"os"
 
+	pkgcmd "github.com/rancherlabs/corral/pkg/cmd"
 	"github.com/rancherlabs/corral/pkg/config"
 	"github.com/rancherlabs/corral/pkg/corral"
 	_package "github.com/rancherlabs/corral/pkg/package"
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
 
@@ -25,35 +26,36 @@ corral vars k3s -a
 func NewCommandVars() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "vars NAME [VAR | [VAR...]]",
-		Short: "Show the given corral's variables.",
+		Short: "Show the given corral's variables",
 		Long:  varsDescription,
-		Run:   listVars,
+		RunE:  listVars,
 		Args:  cobra.MinimumNArgs(1),
 	}
 
 	cmd.Flags().Bool("sensitive", false, "Sensitive values will be displayed if this flag is true.")
+	cmd.Flags().VarP(&output, "output", "o", "Output format. One of: table|json|yaml")
 	cmd.Flags().BoolP("all", "a", false, "All values will be displayed if this flag is true.")
 
 	return cmd
 }
 
-func listVars(cmd *cobra.Command, args []string) {
+func listVars(cmd *cobra.Command, args []string) error {
 	corralName := args[0]
 
 	c, err := corral.Load(config.CorralPath(corralName))
 	if err != nil {
-		logrus.Fatal("failed to load corral: ", err)
+		return err
 	}
 
 	// if only one output is requested return the raw value
 	if len(args) == 2 {
-		_, _ = os.Stdout.Write([]byte(c.Vars[args[1]]))
-		return
+		_, _ = os.Stdout.WriteString(c.Vars[args[1]] + "\n")
+		return nil
 	}
 
 	pkg, err := _package.LoadPackage(c.Source)
 	if err != nil {
-		logrus.Fatal("failed to load corral package: ", err)
+		return err
 	}
 
 	vs := c.Vars
@@ -66,9 +68,13 @@ func listVars(cmd *cobra.Command, args []string) {
 		vs = pkg.FilterSensitiveVars(vs)
 	}
 
-	println("NAME\tVALUE")
-	for k, v := range vs {
-		println(k + "\t" + v)
+	out, err := pkgcmd.Output(vs, output, pkgcmd.OutputOptions{
+		Key:   "NAME",
+		Value: "VALUE",
+	})
+	if err != nil {
+		return err
 	}
-	println()
+	fmt.Println(out)
+	return nil
 }

@@ -1,9 +1,10 @@
 package cmd
 
 import (
+	"fmt"
 	"os"
 
-	"github.com/jedib0t/go-pretty/v6/table"
+	pkgcmd "github.com/rancherlabs/corral/pkg/cmd"
 	"github.com/rancherlabs/corral/pkg/config"
 	"github.com/rancherlabs/corral/pkg/corral"
 	"github.com/spf13/cobra"
@@ -14,26 +15,34 @@ func NewCommandList() *cobra.Command {
 		Use:   "list",
 		Short: "List all corrals on this system.",
 		Long:  "List all corrals on this system.",
-		Run:   list,
+		RunE:  list,
 	}
+
+	cmd.Flags().VarP(&output, "output", "o", "Output format. One of: table|json|yaml")
 
 	return cmd
 }
 
-func list(_ *cobra.Command, _ []string) {
+func list(_ *cobra.Command, _ []string) error {
 	corralNames, _ := os.ReadDir(config.CorralRoot("corrals"))
 
-	tbl := table.NewWriter()
-	tbl.SetOutputMirror(os.Stdout)
-	tbl.AppendHeader(table.Row{"NAME", "STATUS"})
-	tbl.AppendSeparator()
+	corrals := map[string]string{}
 	for _, entry := range corralNames {
 		c, err := corral.Load(config.CorralRoot("corrals", entry.Name()))
 		if err != nil {
 			continue
 		}
 
-		tbl.AppendRow(table.Row{c.Name, c.Status.String()})
+		corrals[c.Name] = c.Status.String()
 	}
-	tbl.Render()
+
+	out, err := pkgcmd.Output(corrals, output, pkgcmd.OutputOptions{
+		Key:   "NAME",
+		Value: "STATUS",
+	})
+	if err != nil {
+		return err
+	}
+	fmt.Println(out)
+	return nil
 }
