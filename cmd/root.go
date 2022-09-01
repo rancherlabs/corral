@@ -2,8 +2,10 @@ package cmd
 
 import (
 	"github.com/rancherlabs/corral/cmd/config"
+
 	cmdpackage "github.com/rancherlabs/corral/cmd/package"
 	pkgcmd "github.com/rancherlabs/corral/pkg/cmd"
+	"github.com/rancherlabs/corral/pkg/version"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -15,9 +17,10 @@ func Execute() {
 	var trace bool
 
 	rootCmd := &cobra.Command{
-		Use:   "corral",
-		Short: "Corral is a CLI tool for creating and packaging reproducible development environments.",
-		Long:  "Corral is a CLI tool for creating and packaging reproducible development environments.",
+		Use:     "corral",
+		Short:   "Corral is a CLI tool for creating and packaging reproducible development environments.",
+		Long:    "Corral is a CLI tool for creating and packaging reproducible development environments.",
+		Version: version.Version,
 		PersistentPreRun: func(cmd *cobra.Command, args []string) {
 			if trace {
 				logrus.SetLevel(logrus.TraceLevel)
@@ -33,8 +36,6 @@ func Execute() {
 		SilenceUsage:  true,
 		SilenceErrors: true,
 	}
-
-	//rootCmd.SetErr(logrus.StandardLogger().Out)
 
 	rootCmd.AddCommand(
 		config.NewCommandConfig(),
