@@ -1,17 +1,24 @@
 package vars
 
 import (
+	"fmt"
+
+	pkgcmd "github.com/rancherlabs/corral/pkg/cmd"
 	"github.com/rancherlabs/corral/pkg/config"
 	"github.com/spf13/cobra"
 )
+
+var output = pkgcmd.OutputFormatTable
 
 func NewVarsCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "vars [VAR | [VAR...]]",
 		Short: "List and modify global configuration.",
 		Long:  "List and modify global configuration.",
-		Run:   listVars,
+		RunE:  listVars,
 	}
+
+	cmd.Flags().VarP(&output, "output", "o", "Output format. One of: table|json|yaml")
 
 	cmd.AddCommand(
 		NewCommandSet(),
@@ -19,24 +26,30 @@ func NewVarsCommand() *cobra.Command {
 	return cmd
 }
 
-func listVars(_ *cobra.Command, args []string) {
+func listVars(cmd *cobra.Command, args []string) error {
 	cfg := config.MustLoad()
 
 	if len(args) == 1 {
 		println(cfg.Vars[args[0]])
-		return
+		return nil
 	}
 
+	vars := map[string]string{}
 	if len(args) > 1 {
-		println("NAME\tVALUE")
 		for _, k := range args {
-			println(k + "\t" + cfg.Vars[k])
+			vars[k] = cfg.Vars[k]
 		}
-		return
+	} else {
+		vars = cfg.Vars
 	}
 
-	println("NAME\tVALUE")
-	for k, v := range cfg.Vars {
-		println(k + "\t" + v)
+	out, err := pkgcmd.Output(vars, output, pkgcmd.OutputOptions{
+		Key:   "NAME",
+		Value: "VALUE",
+	})
+	if err != nil {
+		return err
 	}
+	fmt.Println(out)
+	return nil
 }

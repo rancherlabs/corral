@@ -3,9 +3,12 @@ package cmd
 import (
 	"github.com/rancherlabs/corral/cmd/config"
 	cmd_package "github.com/rancherlabs/corral/cmd/package"
+	pkgcmd "github.com/rancherlabs/corral/pkg/cmd"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
+
+var output = pkgcmd.OutputFormatTable
 
 func Execute() {
 	var debug bool
