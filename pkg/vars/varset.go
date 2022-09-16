@@ -1,3 +1,3 @@
 package vars
 
-type VarSet map[string]string
+type VarSet map[string]any

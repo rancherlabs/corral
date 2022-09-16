@@ -3,7 +3,6 @@ package cmd
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/sirupsen/logrus"
@@ -22,6 +21,8 @@ func (e *OutputFormat) String() string {
 	return string(*e)
 }
 
+var ErrUnknownOutputFormat = errors.New(`must be one of "table", "json", or "yaml"`)
+
 // Set must have pointer receiver so it doesn't change the value of a copy
 func (e *OutputFormat) Set(v string) error {
 	switch v {
@@ -29,7 +30,7 @@ func (e *OutputFormat) Set(v string) error {
 		*e = OutputFormat(v)
 		return nil
 	default:
-		return errors.New(`must be one of "table", "json", or "yaml"`)
+		return ErrUnknownOutputFormat
 	}
 }
 
@@ -66,5 +67,5 @@ func Output[K comparable, V any](out map[K]V, output OutputFormat, opts OutputOp
 		}
 		return string(data[:len(data)-1]), nil // remove trailing newline
 	}
-	return "", fmt.Errorf("cannot create output for %s", output)
+	return "", ErrUnknownOutputFormat
 }

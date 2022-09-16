@@ -1,0 +1,11 @@
+name: template1 input
+description: template1 input
+commands:
+  - command: /app/template1.sh
+    node_pools:
+      - all
+variables:
+  var1:
+    default: t1
+    description: template variable 1
+    type: string

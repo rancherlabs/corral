@@ -15,7 +15,15 @@ func NewVarsCommand() *cobra.Command {
 		Use:   "vars [VAR | [VAR...]]",
 		Short: "List and modify global configuration.",
 		Long:  "List and modify global configuration.",
-		RunE:  listVars,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cfg := config.MustLoad()
+			out, err := ListVars(cfg, output, args...)
+			if err != nil {
+				return err
+			}
+			fmt.Println(out)
+			return nil
+		},
 	}
 
 	cmd.Flags().VarP(&output, "output", "o", "Output format. One of: table|json|yaml")
@@ -26,12 +34,9 @@ func NewVarsCommand() *cobra.Command {
 	return cmd
 }
 
-func listVars(cmd *cobra.Command, args []string) error {
-	cfg := config.MustLoad()
-
+func ListVars(cfg config.Config, output pkgcmd.OutputFormat, args ...string) (string, error) {
 	if len(args) == 1 {
-		println(cfg.Vars[args[0]])
-		return nil
+		return cfg.Vars[args[0]], nil
 	}
 
 	vars := map[string]string{}
@@ -43,13 +48,8 @@ func listVars(cmd *cobra.Command, args []string) error {
 		vars = cfg.Vars
 	}
 
-	out, err := pkgcmd.Output(vars, output, pkgcmd.OutputOptions{
+	return pkgcmd.Output(vars, output, pkgcmd.OutputOptions{
 		Key:   "NAME",
 		Value: "VALUE",
 	})
-	if err != nil {
-		return err
-	}
-	fmt.Println(out)
-	return nil
 }

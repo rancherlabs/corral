@@ -1,0 +1,6 @@
+name: no_overlay
+description: Test no overlay
+commands:
+  - command: test.sh
+    node_pools:
+      - dummy

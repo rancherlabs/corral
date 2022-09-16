@@ -1,16 +1,14 @@
-//go:build !dev
-// +build !dev
-
 package config
 
-import "os"
+import (
+	"os"
+
+	"github.com/samber/lo"
+)
 
 var rootPath string
 
-func init() {
-	var err error
-	rootPath, err = os.UserHomeDir()
-	if err != nil {
-		panic(err)
-	}
+func InitializeRootPath(path string) {
+	rootPath = path
+	lo.Must(os.Stat(rootPath))
 }

@@ -51,11 +51,7 @@ func (c *Corral) TerraformPath(name string) string {
 
 func (c *Corral) Exists() bool {
 	_, err := os.Stat(c.RootPath)
-	if errors.Is(err, os.ErrNotExist) {
-		return false
-	}
-
-	return true
+	return !errors.Is(err, os.ErrNotExist)
 }
 
 func (c *Corral) Save() error {
@@ -102,21 +98,21 @@ func (c *Corral) ApplyModule(src, name string) error {
 
 	tf, err := config.NewTerraform(c.TerraformPath(name), version.TerraformVersion)
 	if err != nil {
-		return errors.Wrap(err, "failed to initialized terraform")
+		return errors.Wrap(err, "failed to initialize terraform")
 	}
 
 	err = tf.Init(context.Background(),
 		tfexec.Upgrade(false),
 		tfexec.FromModule(src))
 	if err != nil {
-		return errors.Wrap(err, "failed to initialized terraform module")
+		return errors.Wrap(err, "failed to initialize terraform module")
 	}
 
 	f, err := os.Create(filepath.Join(c.TerraformPath(name), "terraform.tfvars.json"))
 	if err != nil {
 		return errors.Wrap(err, "failed to create tfvars file")
 	}
-	tfVars := map[string]interface{}{}
+	tfVars := map[string]any{}
 	for k, v := range c.Vars {
 		if k == "corral_node_pools" {
 			tfVars[k] = c.NodePools
@@ -154,7 +150,11 @@ func (c *Corral) ApplyModule(src, name string) error {
 			c.Vars[nodePoolVarName] = vars.Escape(&buf)
 		}
 
-		c.Vars[k] = vars.FromTerraformOutputMeta(v)
+		val, err := vars.FromTerraformOutputMeta(v)
+		if err != nil {
+			return errors.Wrap(err, "failed to parse variable terraform output")
+		}
+		c.Vars[k] = val
 	}
 
 	return nil

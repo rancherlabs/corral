@@ -1,3 +1,5 @@
+[![Go Report Card](https://goreportcard.com/badge/github.com/rancherlabs/corral)](https://goreportcard.com/badge/github.com/rancherlabs/corral)
+
 # Corral
 Corral is a CLI tool for creating and packaging reproducible development environments.  Corral allows developers to manage multiple environments, called corrals, and provision them consistently using shared packages.
 

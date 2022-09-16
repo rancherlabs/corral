@@ -39,28 +39,26 @@ func MustLoad() Config {
 
 func Load() (Config, error) {
 	var c Config
-	var err error
 
 	body, err := os.ReadFile(CorralRoot("config.yaml"))
 	if err != nil {
 		return Config{}, err
 	}
 
-	if err := yaml.Unmarshal(body, &c); err != nil {
+	if err = yaml.Unmarshal(body, &c); err != nil {
 		return Config{}, err
 	}
 
 	if version.Version != c.Version {
 		logrus.Infof("Upgrading corral to %s.", version.Version)
-		if err := Install(); err != nil {
+		if err = Install(); err != nil {
 			panic(err)
 		}
 
 		c.Version = version.Version
-		if err := c.Save(); err != nil {
+		if err = c.Save(); err != nil {
 			panic(err)
 		}
-
 	}
 
 	return c, nil

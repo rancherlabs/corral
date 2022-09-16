@@ -10,6 +10,7 @@ import (
 	"runtime"
 	"sync"
 
+	"github.com/pkg/errors"
 	"github.com/rancherlabs/corral/pkg/config"
 	"github.com/rancherlabs/corral/pkg/corral"
 	_package "github.com/rancherlabs/corral/pkg/package"
@@ -41,7 +42,7 @@ func NewCommandCreate() *cobra.Command {
 		Short: "Create a new corral",
 		Long:  createDescription,
 		Args:  cobra.RangeArgs(1, 2),
-		Run:   create,
+		RunE:  create,
 		PreRun: func(cmd *cobra.Command, _ []string) {
 			cfgFile := cmd.Flags().Lookup("config").Value.String()
 			if cfgFile != "" {
@@ -71,7 +72,7 @@ func NewCommandCreate() *cobra.Command {
 	return cmd
 }
 
-func create(cmd *cobra.Command, args []string) {
+func create(cmd *cobra.Command, args []string) error {
 	cfg := config.MustLoad()
 
 	var corr corral.Corral
@@ -79,7 +80,7 @@ func create(cmd *cobra.Command, args []string) {
 	corr.Name = args[0]
 	corr.Source = cfgViper.GetString("package")
 	corr.NodePools = map[string][]corral.Node{}
-	corr.Vars = map[string]string{}
+	corr.Vars = map[string]any{}
 
 	if len(args) > 1 {
 		corr.Source = args[1]
@@ -91,7 +92,7 @@ func create(cmd *cobra.Command, args []string) {
 
 	if cfgViper.GetBool("recreate") {
 		logrus.Infof("Deleting existing corral [%s]", args[0])
-		deleteCorral(cmd, args[0:1])
+		deleteCorrals(cmd, args[0:1])
 	}
 
 	// ensure this corral is unique
@@ -101,7 +102,10 @@ func create(cmd *cobra.Command, args []string) {
 
 	// load cli variables
 	for _, raw := range cfgViper.GetStringSlice("variable") {
-		k, v := vars.ToVar(raw)
+		k, v, err := vars.ToVar(raw)
+		if err != nil {
+			return err
+		}
 		if k == "" {
 			logrus.Fatal("variables should be in the format <key>=<value>")
 		}
@@ -162,6 +166,10 @@ func create(cmd *cobra.Command, args []string) {
 		if cmd.Module != "" {
 			logrus.Infof("[%d/%d] applying %s module", i+1, len(pkg.Manifest.Commands), cmd.Module)
 			err = corr.ApplyModule(pkg.TerraformModulePath(cmd.Module), cmd.Module)
+			if err != nil {
+				corr.SetStatus(corral.StatusError)
+				break
+			}
 		}
 
 		if cmd.Parallel == nil {
@@ -187,7 +195,7 @@ func create(cmd *cobra.Command, args []string) {
 
 						// add distinct shells to the shells list
 						if _, ok := seen[sh]; !ok {
-							seen[sh] = seen[sh]
+							seen[sh] = struct{}{}
 							shells = append(shells, sh)
 						}
 					}
@@ -217,7 +225,7 @@ func create(cmd *cobra.Command, args []string) {
 
 				if _, ok := knownNodes[sh]; !ok {
 					newNodeShells = append(newNodeShells, sh)
-					knownNodes[sh] = knownNodes[sh]
+					knownNodes[sh] = struct{}{}
 				}
 			}
 		}
@@ -262,6 +270,7 @@ func create(cmd *cobra.Command, args []string) {
 	}
 
 	logrus.Info("done!")
+	return nil
 }
 
 // copyPackageFiles copies the appropriate overlay files from the given package to the shells.  Concurrency is limited
@@ -286,10 +295,16 @@ func copyPackageFiles(shells []*shell.Shell, pkg _package.Package) error {
 }
 
 func executeShellCommand(command string, shells []*shell.Shell, vs vars.VarSet, parallel bool) error {
+	var err error
 	if parallel {
-		return executeShellCommandAsync(command, shells, vs)
+		err = executeShellCommandAsync(command, shells, vs)
+	} else {
+		err = executeShellCommandSync(command, shells, vs)
 	}
-	return executeShellCommandSync(command, shells, vs)
+	if err != nil {
+		return errors.Wrapf(err, "running %s", command)
+	}
+	return nil
 }
 
 // executeShellCommandAsync runs the given command on the given shells. Any vars set are saved to the VarSet.

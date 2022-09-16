@@ -1,0 +1,7 @@
+name: valid
+description: minimally valid corral package
+commands:
+  - module: module
+  - command: test.sh
+    node_pools:
+      - test

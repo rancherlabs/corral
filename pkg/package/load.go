@@ -25,6 +25,8 @@ func LoadPackage(ref string) (Package, error) {
 	path, _ := filepath.Abs(ref)
 	if _, err := os.Stat(path); err == nil {
 		return loadLocalPackage(path)
+	} else if strings.HasPrefix(ref, "./") {
+		return Package{}, err
 	}
 
 	if !strings.Contains(ref, ":") {

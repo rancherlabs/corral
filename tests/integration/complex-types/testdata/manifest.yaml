@@ -1,0 +1,21 @@
+name: test
+description: test corral
+commands:
+  - module: module
+  - command: /app/setvariables.sh
+    node_pools:
+      - all
+  - module: variables
+variables:
+  string_output:
+    type: string
+    readOnly: true
+  number_output:
+    type: number
+    readOnly: true
+  array_output:
+    type: array
+    readOnly: true
+  object_output:
+    type: object
+    readOnly: true
