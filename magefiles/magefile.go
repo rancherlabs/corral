@@ -4,7 +4,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"os"
 	"runtime"
@@ -39,7 +38,7 @@ func Dependencies() error {
 
 func Build(ctx context.Context) error {
 	mg.Deps(Dependencies)
-	return g.Build("main.go", fmt.Sprintf("dist/corral-%s-%s", g.OS, g.Arch))
+	return g.Build()
 }
 
 func Validate() error {
