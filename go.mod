@@ -9,6 +9,7 @@ require (
 	github.com/hashicorp/hc-install v0.3.2
 	github.com/hashicorp/terraform-exec v0.16.1
 	github.com/jedib0t/go-pretty/v6 v6.3.0
+	github.com/magefile/mage v1.13.0
 	github.com/onsi/ginkgo/v2 v2.1.6
 	github.com/onsi/gomega v1.20.2
 	github.com/opencontainers/image-spec v1.0.2
