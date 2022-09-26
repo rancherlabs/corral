@@ -36,10 +36,10 @@ func NewVarsCommand() *cobra.Command {
 
 func ListVars(cfg config.Config, output pkgcmd.OutputFormat, args ...string) (string, error) {
 	if len(args) == 1 {
-		return cfg.Vars[args[0]], nil
+		return fmt.Sprintf("%v", cfg.Vars[args[0]]), nil
 	}
 
-	vars := map[string]string{}
+	vars := map[string]any{}
 	if len(args) > 1 {
 		for _, k := range args {
 			vars[k] = cfg.Vars[k]

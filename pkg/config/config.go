@@ -23,7 +23,7 @@ type Config struct {
 
 	Version string `yaml:"version"`
 
-	Vars map[string]string `yaml:"vars"`
+	Vars map[string]any `yaml:"vars"`
 }
 
 func MustLoad() Config {
