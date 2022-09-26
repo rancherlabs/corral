@@ -12,21 +12,21 @@ var _ = Describe("Vars", func() {
 	When("only one variable is passed", func() {
 		When("the output format is table", func() {
 			It("returns only one variable", func() {
-				v, err := vars.ListVars(config.Config{Vars: map[string]string{"test": "test1"}}, pkgcmd.OutputFormatTable, "test")
+				v, err := vars.ListVars(config.Config{Vars: map[string]any{"test": "test1"}}, pkgcmd.OutputFormatTable, "test")
 				Expect(err).To(BeNil())
 				Expect(v).To(Equal("test1"))
 			})
 		})
 		When("the output format is json", func() {
 			It("returns only one variable", func() {
-				v, err := vars.ListVars(config.Config{Vars: map[string]string{"test": "test1"}}, pkgcmd.OutputFormatJSON, "test")
+				v, err := vars.ListVars(config.Config{Vars: map[string]any{"test": "test1"}}, pkgcmd.OutputFormatJSON, "test")
 				Expect(err).To(BeNil())
 				Expect(v).To(Equal("test1"))
 			})
 		})
 		When("the output format is yaml", func() {
 			It("returns only one variable", func() {
-				v, err := vars.ListVars(config.Config{Vars: map[string]string{"test": "test1"}}, pkgcmd.OutputFormatYAML, "test")
+				v, err := vars.ListVars(config.Config{Vars: map[string]any{"test": "test1"}}, pkgcmd.OutputFormatYAML, "test")
 				Expect(err).To(BeNil())
 				Expect(v).To(Equal("test1"))
 			})
@@ -34,28 +34,28 @@ var _ = Describe("Vars", func() {
 	})
 	When("an unsupported output format is passed", func() {
 		It("returns an error", func() {
-			_, err := vars.ListVars(config.Config{Vars: map[string]string{}}, "a")
+			_, err := vars.ListVars(config.Config{Vars: map[string]any{}}, "a")
 			Expect(err).Should(MatchError(pkgcmd.ErrUnknownOutputFormat))
 		})
 	})
 	When("no variables are passed", func() {
 		When("the output format is table", func() {
 			It("has the expected output", func() {
-				v, err := vars.ListVars(config.Config{Vars: map[string]string{"test": "test1"}}, pkgcmd.OutputFormatTable)
+				v, err := vars.ListVars(config.Config{Vars: map[string]any{"test": "test1"}}, pkgcmd.OutputFormatTable)
 				Expect(err).To(BeNil())
 				Expect(v).To(Equal("+------+-------+\n| NAME | VALUE |\n+------+-------+\n| test | test1 |\n+------+-------+"))
 			})
 		})
 		When("the output format is json", func() {
 			It("has the expected output", func() {
-				v, err := vars.ListVars(config.Config{Vars: map[string]string{"test": "test1"}}, pkgcmd.OutputFormatJSON)
+				v, err := vars.ListVars(config.Config{Vars: map[string]any{"test": "test1"}}, pkgcmd.OutputFormatJSON)
 				Expect(err).To(BeNil())
 				Expect(v).To(Equal(`{"test":"test1"}`))
 			})
 		})
 		When("the output format is yaml", func() {
 			It("has the expected output", func() {
-				v, err := vars.ListVars(config.Config{Vars: map[string]string{"test": "test1"}}, pkgcmd.OutputFormatYAML)
+				v, err := vars.ListVars(config.Config{Vars: map[string]any{"test": "test1"}}, pkgcmd.OutputFormatYAML)
 				Expect(err).To(BeNil())
 				Expect(v).To(Equal("test: test1"))
 			})
