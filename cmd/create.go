@@ -49,7 +49,7 @@ func NewCommandCreate() *cobra.Command {
 				cfgViper.AddConfigPath(cfgFile)
 				err := cfgViper.ReadInConfig()
 				if err != nil {
-					logrus.Fatal("failed to parse config file.")
+					logrus.Fatalf("Error reading config file: %v", err)
 				}
 			}
 		},
