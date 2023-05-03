@@ -2,7 +2,7 @@ ARG OS=linux
 ARG ARCH=amd64
 ARG VERSION=dev
 
-FROM golang:1.18-alpine as mage
+FROM golang:1.20-alpine as mage
 ARG OS
 ARG ARCH
 ARG VERSION

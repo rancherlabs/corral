@@ -11,8 +11,6 @@ import (
 	"github.com/rancherlabs/corral/pkg/config"
 	"github.com/rancherlabs/corral/pkg/version"
 
-	"io/ioutil"
-
 	"github.com/pkg/errors"
 
 	"github.com/rancherlabs/corral/pkg/vars"
@@ -38,7 +36,7 @@ type Corral struct {
 
 func Load(path string) (*Corral, error) {
 	var c Corral
-	b, err := ioutil.ReadFile(filepath.Join(path, "corral.yaml"))
+	b, err := os.ReadFile(filepath.Join(path, "corral.yaml"))
 	if err != nil {
 		return nil, err
 	}

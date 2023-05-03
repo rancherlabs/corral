@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -77,7 +76,7 @@ func MergePackages(name, description string, pkgs []Package) (TemplateManifest, 
 	}
 
 	for _, pkg := range pkgs {
-		buf, err := ioutil.ReadFile(filepath.Join(pkg.RootPath, "manifest.yaml"))
+		buf, err := os.ReadFile(filepath.Join(pkg.RootPath, "manifest.yaml"))
 		if err != nil {
 			return t, err
 		}
