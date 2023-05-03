@@ -213,6 +213,7 @@ func varsToEnvVars(varSet vars.VarSet) ([]string, error) {
 			str = fmt.Sprintf("'%s'", str)
 		}
 		result = append(result, fmt.Sprintf("export CORRAL_%s=%s", k, str))
+		result = append(result, fmt.Sprintf("export TF_VAR_%s=%s", k, str))
 	}
 	return result, nil
 }
