@@ -3,7 +3,7 @@ package complex_types
 import (
 	"crypto/rand"
 	"crypto/rsa"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -35,7 +35,7 @@ func TestSimpleOutput(t *testing.T) {
 
 	pubBytes := ssh.MarshalAuthorizedKey(pub)
 	pubPath := filepath.Join(t.TempDir(), "id_rsa.pub")
-	require.NoError(t, ioutil.WriteFile(pubPath, pubBytes, 0o600))
+	require.NoError(t, os.WriteFile(pubPath, pubBytes, 0o600))
 
 	configCmd.SetArgs([]string{"--user_id", "testuser", "--public_key", pubPath})
 	require.NoError(t, configCmd.Execute())
