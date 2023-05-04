@@ -136,12 +136,19 @@ func create(cmd *cobra.Command, args []string) error {
 		logrus.Fatal("invalid defaults: ", err)
 	}
 
-	logrus.Info("generating ssh keys")
-	privkey, _ := generatePrivateKey(2048)
-	pubkey, _ := generatePublicKey(&privkey.PublicKey)
-	corr.PrivateKey = string(encodePrivateKeyToPEM(privkey))
-	corr.PublicKey = string(pubkey)
-
+	if corr.Vars["corral_private_key"] == nil && corr.Vars["corral_public_key"] == nil {
+		logrus.Info("generating ssh keys")
+		privkey, _ := generatePrivateKey(2048)
+		pubkey, _ := generatePublicKey(&privkey.PublicKey)
+		corr.PrivateKey = string(encodePrivateKeyToPEM(privkey))
+		corr.PublicKey = string(pubkey)
+		corr.Vars["corral_public_key"] = corr.PublicKey
+		corr.Vars["corral_private_key"] = corr.PrivateKey
+	} else {
+		logrus.Info("reusing generated ssh keys")
+		corr.PublicKey = corr.Vars["corral_public_key"].(string)
+		corr.PrivateKey = corr.Vars["corral_private_key"].(string)
+	}
 	// add common variables
 	userPublicKey, err := os.ReadFile(cfg.UserPublicKeyPath)
 	if err != nil {
@@ -150,8 +157,6 @@ func create(cmd *cobra.Command, args []string) error {
 	corr.Vars["corral_name"] = corr.Name
 	corr.Vars["corral_user_id"] = cfg.UserID
 	corr.Vars["corral_user_public_key"] = string(userPublicKey)
-	corr.Vars["corral_public_key"] = corr.PublicKey
-	corr.Vars["corral_private_key"] = corr.PrivateKey
 	corr.Vars["corral_node_pools"] = ""
 
 	// write the corral to disk
