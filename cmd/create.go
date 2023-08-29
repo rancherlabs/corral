@@ -8,6 +8,7 @@ import (
 	"encoding/pem"
 	"os"
 	"runtime"
+	"strings"
 	"sync"
 
 	"github.com/pkg/errors"
@@ -19,6 +20,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"golang.org/x/crypto/ed25519"
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/sync/errgroup"
 )
@@ -35,6 +37,7 @@ corral create k3s ghcr.io/rancher/k3s
 corral create k3s-ha -v controlplane_count=3 ghcr.io/rancher/k3s
 corral create k3s-custom /home/rancher/issue-1234
 `
+const ed25519KeyType = "ed25519"
 
 func NewCommandCreate() *cobra.Command {
 	cmd := &cobra.Command{
@@ -138,10 +141,30 @@ func create(cmd *cobra.Command, args []string) error {
 
 	if corr.Vars["corral_private_key"] == nil && corr.Vars["corral_public_key"] == nil {
 		logrus.Info("generating ssh keys")
-		privkey, _ := generatePrivateKey(2048)
-		pubkey, _ := generatePublicKey(&privkey.PublicKey)
-		corr.PrivateKey = string(encodePrivateKeyToPEM(privkey))
-		corr.PublicKey = string(pubkey)
+		if corr.Vars["corral_ssh_key_type"] == ed25519KeyType {
+			_, privkey, err := ed25519.GenerateKey(nil)
+			if err != nil {
+				logrus.Fatal("unable to generate private ed25519 key: ", err)
+			}
+			pubkey, err := ssh.NewPublicKey(privkey.Public())
+			if err != nil {
+				logrus.Fatal("failed to generate public ed25519 key: ", err)
+			}
+			corr.PrivateKey = string(encodePrivateKeyToPEM(privkey, "OPENSSH"))
+			corr.PublicKey = string(ssh.MarshalAuthorizedKey(pubkey))
+		} else {
+			corr.Vars["corral_ssh_key_type"] = "rsa"
+			privkey, err := generateRSAPrivateKey(2048)
+			if err != nil {
+				logrus.Fatal("unable to generate private rsa key: ", err)
+			}
+			pubkey, err := generateRSAPublicKey(&privkey.PublicKey)
+			if err != nil {
+				logrus.Fatal("failed to generate public rsa key: ", err)
+			}
+			corr.PrivateKey = string(encodePrivateKeyToPEM(privkey, "RSA"))
+			corr.PublicKey = string(pubkey)
+		}
 		corr.Vars["corral_public_key"] = corr.PublicKey
 		corr.Vars["corral_private_key"] = corr.PrivateKey
 	} else {
@@ -360,7 +383,7 @@ func executeShellCommandSync(command string, shells []*shell.Shell, vs vars.VarS
 	return nil
 }
 
-func generatePrivateKey(bits int) (*rsa.PrivateKey, error) {
+func generateRSAPrivateKey(bits int) (*rsa.PrivateKey, error) {
 	privateKey, err := rsa.GenerateKey(rand.Reader, bits)
 	if err != nil {
 		return nil, err
@@ -374,7 +397,7 @@ func generatePrivateKey(bits int) (*rsa.PrivateKey, error) {
 	return privateKey, nil
 }
 
-func generatePublicKey(key *rsa.PublicKey) ([]byte, error) {
+func generateRSAPublicKey(key *rsa.PublicKey) ([]byte, error) {
 	publicRsaKey, err := ssh.NewPublicKey(key)
 	if err != nil {
 		return nil, err
@@ -385,11 +408,31 @@ func generatePublicKey(key *rsa.PublicKey) ([]byte, error) {
 	return pubKeyBytes, nil
 }
 
-func encodePrivateKeyToPEM(key *rsa.PrivateKey) []byte {
-	privDER := x509.MarshalPKCS1PrivateKey(key)
+func encodePrivateKeyToPEM(key any, blockType string) []byte {
+	blockTypeDefault := "PRIVATE KEY"
+
+	if len(blockType) > 0 {
+		blockTypeDefault = " " + blockTypeDefault
+	}
+	blockType = blockType + blockTypeDefault
+
+	var privDER []byte
+	var err error
+	if strings.Contains(blockType, "OPENSSH") {
+		// Necessary to cast type in order to correctly marshal the key for OpenSSH
+		privDER, err = x509.MarshalPKCS8PrivateKey(key.(ed25519.PrivateKey))
+	} else if strings.Contains(blockType, "RSA") {
+		privDER = x509.MarshalPKCS1PrivateKey(key.(*rsa.PrivateKey))
+	} else {
+		privDER, err = x509.MarshalPKCS8PrivateKey(key)
+	}
+
+	if err != nil {
+		logrus.Fatal("failed to marshal PKCS8 private key: ", err)
+	}
 
 	privBlock := pem.Block{
-		Type:    "RSA PRIVATE KEY",
+		Type:    blockType,
 		Headers: nil,
 		Bytes:   privDER,
 	}
